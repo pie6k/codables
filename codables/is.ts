@@ -1,12 +1,18 @@
 import { JSONArray, JSONPrimitive, Primitive } from "./types";
 
 export function getIsJSONPrimitive(value: unknown): value is JSONPrimitive {
-  return (
-    value === null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  );
+  if (value === null) return true;
+  if (typeof value === "string") return true;
+  if (typeof value === "boolean") return true;
+
+  if (typeof value === "number") {
+    if (isNaN(value)) return false;
+    if (value === Infinity) return false;
+    if (value === -Infinity) return false;
+    return true;
+  }
+
+  return false;
 }
 
 /**

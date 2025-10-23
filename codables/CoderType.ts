@@ -5,7 +5,7 @@ interface CoderTypeDefinition<Item, Data> {
   name: string;
   encode: (data: Item) => Data;
   decode: (data: Data) => Item;
-  canEncode: (value: unknown) => value is Item;
+  canHandle: (value: unknown) => value is Item;
 }
 
 type CustomTypeKey<Name extends string> = `$$${Name}`;
@@ -46,21 +46,25 @@ export class CoderType<Item = any, Data = any> {
     return wrapAsCustomType(this.name, encodedData);
   }
 
-  getCanEncode(value: unknown): value is Item {
-    return this.definition.canEncode(value);
+  canHandle(value: unknown): value is Item {
+    return this.definition.canHandle(value);
   }
 }
 
 export function createCoderType<Item, Data>(
   name: string,
-  canEncode: (value: unknown) => value is Item,
+  canHandle: (value: unknown) => value is Item,
   encode: (data: Item) => Data,
   decode: (data: Data) => Item
 ): CoderType<Item, Data> {
   return new CoderType({
     name,
-    canEncode,
+    canHandle,
     encode,
     decode,
   });
+}
+
+export function getIsCoderType(value: unknown): value is CoderType {
+  return value instanceof CoderType;
 }

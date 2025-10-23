@@ -66,7 +66,7 @@ export function encodeInput(
     return result;
   }
 
-  const customType = coder.getCoderForInput(input);
+  const customType = coder.getMatchingTypeFor(input);
 
   if (customType) {
     const encoded = customType.encode(input);

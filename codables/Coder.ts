@@ -1,79 +1,46 @@
-import * as builtin from "./builtin";
+import * as builtinTypesMap from "./builtin";
 
-import { CoderType, createCoderType } from "./CoderType";
+import { AnyCodableClass, JSONValue } from "./types";
+import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
 import { encodeInput, finalizeEncodeWithCircularRefs } from "./encode";
+import { getCodableClassType, getIsCodableClass } from "./codableClass";
 
-import { CUSTOM_TYPE_INDICATOR_PREFIX } from "./consts";
 import { CircularRefsManager } from "./refs";
-import { JSONValue } from "./types";
 import { decodeInput } from "./decode";
-import { getIsRecord } from "./is";
+import { parseMaybeCustomTypeWrapper } from "./parseUtils";
 
-const DEFAULT_TYPES = [...Object.entries(builtin)].map(([name, type]) => {
-  return type as CoderType;
-});
-
-function parseCustomTypeIndicatorKey(key: string) {
-  if (!key.startsWith(CUSTOM_TYPE_INDICATOR_PREFIX)) {
-    return null;
-  }
-
-  return key.slice(CUSTOM_TYPE_INDICATOR_PREFIX.length);
-}
-
-export function parseMaybeCustomTypeWrapper(input: unknown, coder: Coder) {
-  if (!getIsRecord(input)) {
-    return null;
-  }
-
-  const key = Object.keys(input);
-
-  if (key.length !== 1) return null;
-
-  const [customTypeIndicatorKey] = key;
-
-  const customTypeName = parseCustomTypeIndicatorKey(customTypeIndicatorKey);
-
-  if (!customTypeName) return null;
-
-  const customType = coder.getTypeByName(customTypeName);
-
-  if (!customType) return null;
-
-  const data = input[customTypeIndicatorKey] as JSONValue;
-
-  return {
-    name: customTypeName,
-    type: customType,
-    data,
-    coder,
-  };
-}
-
-export type ParsedCustomTypeWrapper = NonNullable<
-  ReturnType<typeof parseMaybeCustomTypeWrapper>
->;
+const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
+  getIsCoderType
+);
 
 export class Coder {
-  private types = new Set<CoderType>(DEFAULT_TYPES);
+  private typesMap = new Map<string, CoderType>(
+    DEFAULT_TYPES.map((type) => [type.name, type])
+  );
 
   getTypeByName(name: string): CoderType | null {
-    // TODO: Create lookup map
-    for (const type of this.types) {
-      if (type.name === name) {
-        return type;
-      }
-    }
-
-    return null;
+    return this.typesMap.get(name) ?? null;
   }
 
   registerType<Item, Data>(type: CoderType<Item, Data>) {
-    this.types.add(type);
+    if (this.isDefault) {
+      throw new Error(
+        "Cannot register types on the default coder. Create a custom coder instance using `new Coder()` and register types on that instance."
+      );
+    }
+
+    if (this.typesMap.has(type.name)) {
+      throw new Error(`Coder type "${type.name}" already registered`);
+    }
+
+    this.typesMap.set(type.name, type);
 
     return type;
   }
 
+  /**
+   * Typescript-sugar over `.registerType()` with better type inference.
+   */
   addType<Item, Data>(
     name: string,
     canEncode: (value: unknown) => value is Item,
@@ -107,9 +74,9 @@ export class Coder {
     return this.decode(JSON.parse(value));
   }
 
-  getCoderForInput(input: unknown): CoderType | null {
-    for (const type of this.types) {
-      if (type.getCanEncode(input)) {
+  getMatchingTypeFor(input: unknown): CoderType | null {
+    for (const type of this.typesMap.values()) {
+      if (type.canHandle(input)) {
         return type;
       }
     }
@@ -117,9 +84,49 @@ export class Coder {
     return null;
   }
 
-  parseMaybeCustomTypeWrapper(input: unknown): ParsedCustomTypeWrapper | null {
+  parseMaybeCustomTypeWrapper(input: unknown) {
     return parseMaybeCustomTypeWrapper(input, this);
+  }
+
+  get isDefault() {
+    return this === coder;
+  }
+
+  registerClass<T extends AnyCodableClass<any>>(Class: T) {
+    if (this.isDefault) {
+      throw new Error(
+        "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance."
+      );
+    }
+
+    if (!getIsCodableClass(Class)) {
+      throw new Error(`Class "${Class.name}" is not codable`);
+    }
+
+    const codableClassType = getCodableClassType(Class);
+
+    if (!codableClassType) {
+      throw new Error(`Class "${Class.name}" is not codable`);
+    }
+
+    return this.registerType(codableClassType);
   }
 }
 
 export const coder = new Coder();
+
+export function decode<T>(value: JSONValue): T {
+  return coder.decode(value);
+}
+
+export function encode<T>(value: T): JSONValue {
+  return coder.encode(value);
+}
+
+export function stringify<T>(value: T): string {
+  return coder.stringify(value);
+}
+
+export function parse<T>(value: string): T {
+  return coder.parse(value);
+}
