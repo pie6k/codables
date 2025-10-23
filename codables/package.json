@@ -1,0 +1,14 @@
+{
+  "name": "codables",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.1"
+  }
+}

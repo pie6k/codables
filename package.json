@@ -1,4 +1,14 @@
 {
-  "name": "codables",
-  "packageManager": "yarn@4.6.0"
+  "name": "@codables/root",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "yarn@4.6.0",
+  "workspaces": {
+    "packages": [
+      "codables"
+    ]
+  },
+  "scripts": {
+    "codables": "yarn workspace codables"
+  }
 }
