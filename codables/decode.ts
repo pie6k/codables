@@ -1,61 +1,81 @@
+import { addPathSegment, unescapePathSegment } from "./utils/paths";
+import { getIsJSONNested, iterateJSONNested } from "./utils";
+import { getIsJSONPrimitive, getIsObject } from "./is";
+
 import { Coder } from "./Coder";
 import { JSONValue } from "./types";
-import { getIsRecord } from "./is";
-import { parseMaybeCircularRefInfo } from "./refs";
-import { sanitizePath } from "./utils";
+import { assertNotForbiddenProperty } from "./utils/security";
+import { getIsRefAlias } from "./refs";
 
-type CircularRefsMap = Map<number, unknown>;
+type ObjectsMap = Map<string, object>;
 
 export function decodeInput<T>(
   input: JSONValue,
-  circularRefsMap: CircularRefsMap,
+  objectsMap: ObjectsMap,
   coder: Coder,
-  path: string[]
+  path: string
 ): T {
+  if (getIsJSONPrimitive(input)) {
+    return input as T;
+  }
+
   const maybeCustomTypeWrapper = coder.parseMaybeCustomTypeWrapper(input);
 
   if (maybeCustomTypeWrapper) {
     const decodedData = decodeInput(
       maybeCustomTypeWrapper.data,
-      circularRefsMap,
+      objectsMap,
       coder,
-      path
+      addPathSegment(path, maybeCustomTypeWrapper.type.wrapperKey)
     );
 
-    return maybeCustomTypeWrapper.type.decoder(decodedData) as T;
+    const decoded = maybeCustomTypeWrapper.type.decoder(decodedData) as T;
+
+    if (getIsObject(decoded)) {
+      objectsMap.set(path, decoded);
+    }
+
+    return decoded;
   }
 
-  const maybeCircularRefInfo = parseMaybeCircularRefInfo(input);
+  if (getIsRefAlias(input)) {
+    const refPath = input.$$ref;
+    const source = objectsMap.get(refPath);
 
-  if (maybeCircularRefInfo) {
-    if (maybeCircularRefInfo.type === "source") {
-      circularRefsMap.set(maybeCircularRefInfo.id, maybeCircularRefInfo.source);
+    if (!source) {
+      throw new Error(`Source not found for ref path: ${refPath}`);
     }
 
-    if (maybeCircularRefInfo.type === "alias") {
-      // TODO: Validate
-      return circularRefsMap.get(maybeCircularRefInfo.id)! as T;
-    }
+    return source as T;
   }
 
-  if (Array.isArray(input)) {
-    const result: unknown[] = [];
-    for (const [index, item] of input.entries()) {
-      result[index] = decodeInput(item, circularRefsMap, coder, [
-        ...path,
-        index.toString(),
-      ]);
+  if (getIsJSONNested(input)) {
+    const result: any = Array.isArray(input) ? [] : {};
+
+    objectsMap.set(path, result);
+
+    for (let [key, value] of iterateJSONNested(input)) {
+      assertNotForbiddenProperty(key);
+      key = unescapePathSegment(key);
+      assertNotForbiddenProperty(key);
+
+      const decoded = decodeInput<any>(
+        value,
+        objectsMap,
+        coder,
+        addPathSegment(path, key)
+      );
+
+      if (getIsObject(decoded)) {
+        objectsMap.set(addPathSegment(path, key), decoded);
+      }
+
+      result[key as keyof typeof result] = decoded;
     }
+
     return result as T;
   }
 
-  if (getIsRecord(input)) {
-    const result: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(input)) {
-      result[key] = decodeInput(value, circularRefsMap, coder, [...path, key]);
-    }
-    return result as T;
-  }
-
+  // TODO: Something incorrect here?
   return input as T;
 }

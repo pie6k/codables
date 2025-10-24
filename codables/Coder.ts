@@ -2,11 +2,11 @@ import * as builtinTypesMap from "./builtin";
 
 import { AnyCodableClass, JSONValue } from "./types";
 import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
-import { encodeInput, finalizeEncodeWithCircularRefs } from "./encode";
 import { getCodableClassType, getIsCodableClass } from "./codableClass";
 
 import { CircularRefsManager } from "./refs";
 import { decodeInput } from "./decode";
+import { encodeInput } from "./encode";
 import { parseMaybeCustomTypeWrapper } from "./parseUtils";
 
 const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
@@ -53,17 +53,13 @@ export class Coder {
   encode<T>(value: T): JSONValue {
     const circularRefsManager = new CircularRefsManager();
 
-    const result = encodeInput(value, circularRefsManager, this, []);
-
-    if (!circularRefsManager.hasCircularRefs) return result;
-
-    return finalizeEncodeWithCircularRefs(result, circularRefsManager);
+    return encodeInput(value, circularRefsManager, this, "#");
   }
 
   decode<T>(value: JSONValue): T {
-    const circularRefsMap = new Map<number, unknown>();
+    const objectsMap = new Map<string, object>();
 
-    return decodeInput<T>(value, circularRefsMap, this, []);
+    return decodeInput<T>(value, objectsMap, this, "#");
   }
 
   stringify<T>(value: T): string {

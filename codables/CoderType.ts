@@ -32,6 +32,10 @@ export class CoderType<Item = any, Data = any> {
     return this.definition.name;
   }
 
+  get wrapperKey() {
+    return `$$${this.name}`;
+  }
+
   get encoder() {
     return this.definition.encode;
   }

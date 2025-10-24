@@ -1,4 +1,12 @@
+import {
+  getIsTypedArray,
+  getTypedArrayConstructor,
+  getTypedArrayType,
+} from "./utils/typedArrays";
+
 import { createCoderType } from "./CoderType";
+import { getErrorExtraProperties } from "./utils/errors";
+import { getSpecialNumberType } from "./utils/numbers";
 
 export const $$undefined = createCoderType(
   "undefined",
@@ -46,23 +54,72 @@ export const $$map = createCoderType(
 export const $$regexp = createCoderType(
   "regexp",
   (value) => value instanceof RegExp,
-  ({ source, flags }) => [source, flags] as const,
-  ([source, flags]) => new RegExp(source, flags)
+  ({ source, flags }) => {
+    if (flags) return [source, flags] as const;
+
+    return source;
+  },
+  (sourceOrSourceAndFlags) => {
+    if (typeof sourceOrSourceAndFlags === "string") {
+      return new RegExp(sourceOrSourceAndFlags);
+    }
+
+    const [source, flags] = sourceOrSourceAndFlags;
+    return new RegExp(source, flags);
+  }
 );
+
+interface ErrorData {
+  message: string;
+  name?: string;
+  cause?: unknown;
+  properties?: Record<string, unknown>;
+}
 
 export const $$error = createCoderType(
   "error",
   (value) => value instanceof Error,
-  (error) => ({
-    message: error.message,
-    name: error.name,
-    cause: error.cause,
-  }),
-  ({ message, name, cause }) => {
+  (error) => {
+    const data: ErrorData = {
+      message: error.message,
+    };
+
+    const extraProperties = getErrorExtraProperties(error);
+
+    if (extraProperties) {
+      data.properties = extraProperties;
+    }
+
+    if (error.name && error.name !== "Error") {
+      data.name = error.name;
+    }
+
+    if (error.cause) {
+      data.cause = error.cause;
+    }
+
+    if (
+      data.name === undefined &&
+      data.cause === undefined &&
+      data.properties === undefined
+    )
+      return data.message;
+
+    return data;
+  },
+  (messageOrData: string | ErrorData) => {
+    if (typeof messageOrData === "string") return new Error(messageOrData);
+
+    const { message, name, cause, properties } = messageOrData;
+
     const error = new Error(message, { cause });
 
-    if (name) {
+    if (name && name !== "Error") {
       error.name = name;
+    }
+
+    if (properties) {
+      Object.assign(error, properties);
     }
 
     return error;
@@ -105,36 +162,6 @@ export const $$symbol = createCoderType(
   (symbolKey) => getSymbol(symbolKey)
 );
 
-const TYPED_ARRAY_MAP = {
-  uint8: Uint8Array,
-  Uint16Array,
-  uint32: Uint32Array,
-  int8: Int8Array,
-  int16: Int16Array,
-  int32: Int32Array,
-  float32: Float32Array,
-  float64: Float64Array,
-} as const;
-
-type TypedArrayTypeName = keyof typeof TYPED_ARRAY_MAP;
-type TypedArray = InstanceType<(typeof TYPED_ARRAY_MAP)[TypedArrayTypeName]>;
-
-function getIsTypedArray(value: unknown): value is TypedArray {
-  for (const [name, type] of Object.entries(TYPED_ARRAY_MAP)) {
-    if (value instanceof type) return true;
-  }
-
-  return false;
-}
-
-function getTypedArrayType(value: unknown): TypedArrayTypeName | null {
-  for (const [name, type] of Object.entries(TYPED_ARRAY_MAP)) {
-    if (value instanceof type) return name as TypedArrayTypeName;
-  }
-
-  return null;
-}
-
 export const $$typedArray = createCoderType(
   "typedArray",
   getIsTypedArray,
@@ -145,18 +172,8 @@ export const $$typedArray = createCoderType(
       data: Array.from(value),
     };
   },
-  ({ type, data }) => new TYPED_ARRAY_MAP[type as TypedArrayTypeName](data)
+  ({ type, data }) => new (getTypedArrayConstructor(type))(data)
 );
-
-function getSpecialNumberType(
-  value: number
-): "NaN" | "Infinity" | "-Infinity" | null {
-  if (isNaN(value)) return "NaN";
-  if (value === Infinity) return "Infinity";
-  if (value === -Infinity) return "-Infinity";
-
-  return null;
-}
 
 export const $$num = createCoderType(
   "num",
@@ -167,6 +184,7 @@ export const $$num = createCoderType(
     if (value === "NaN") return NaN;
     if (value === "Infinity") return Infinity;
     if (value === "-Infinity") return -Infinity;
+    if (value === "-0") return -0;
 
     throw new Error(`Invalid special number type: ${value}`);
   }

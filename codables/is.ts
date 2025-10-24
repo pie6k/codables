@@ -1,14 +1,15 @@
 import { JSONArray, JSONPrimitive, Primitive } from "./types";
 
+import { getSpecialNumberType } from "./utils/numbers";
+
 export function getIsJSONPrimitive(value: unknown): value is JSONPrimitive {
   if (value === null) return true;
   if (typeof value === "string") return true;
   if (typeof value === "boolean") return true;
 
   if (typeof value === "number") {
-    if (isNaN(value)) return false;
-    if (value === Infinity) return false;
-    if (value === -Infinity) return false;
+    if (getSpecialNumberType(value)) return false;
+
     return true;
   }
 
@@ -25,7 +26,11 @@ export function getIsRecord(value: unknown): value is Record<string, unknown> {
     return false;
   }
 
-  return value.constructor === Object;
+  return (
+    value.constructor === Object ||
+    value.constructor === null ||
+    value.constructor === undefined
+  );
 }
 
 export function getIsPrimitive(value: unknown): value is Primitive {

@@ -1,66 +1,48 @@
-import { changeInJSONByMutation, sanitizePath } from "./utils";
-import { getIsJSONPrimitive, getIsObject, getIsRecord } from "./is";
+import { CircularRefsManager, createCircularRefAlias } from "./refs";
+import { addPathSegment, sanitizePathSegment } from "./utils/paths";
+import {
+  assertNotForbiddenProperty,
+  getIsForbiddenProperty,
+} from "./utils/security";
+import { getIsJSONNested, iterateJSONNested } from "./utils";
+import { getIsJSONPrimitive, getIsObject } from "./is";
 
-import { CircularRefsManager } from "./refs";
 import { Coder } from "./Coder";
 import { JSONValue } from "./types";
-
-export function finalizeEncodeWithCircularRefs(
-  output: JSONValue,
-  circularRefsManager: CircularRefsManager
-): JSONValue {
-  for (const [
-    circularRefId,
-    path,
-  ] of circularRefsManager.iterateCircularRefsSourcePaths()) {
-    output = changeInJSONByMutation(output, path, (current) => {
-      return {
-        [`$$ref:${circularRefId}`]: current,
-      };
-    });
-  }
-
-  return output;
-}
 
 export function encodeInput(
   input: unknown,
   circularRefsManager: CircularRefsManager,
   coder: Coder,
-  path: string[]
+  path: string
 ): JSONValue {
   if (getIsJSONPrimitive(input)) {
     return input;
   }
 
   if (getIsObject(input)) {
-    circularRefsManager.handleNewRef(input, path);
+    const alreadySeenPath = circularRefsManager.getAlreadySeenObjectPath(input);
 
-    const circularRefAlias = circularRefsManager.getCircularRefAlias(input);
-
-    if (circularRefAlias) return circularRefAlias;
-  }
-
-  if (Array.isArray(input)) {
-    const result: JSONValue = [];
-    for (const [index, item] of input.entries()) {
-      result[index] = encodeInput(item, circularRefsManager, coder, [
-        ...path,
-        index.toString(),
-      ]);
+    if (alreadySeenPath !== null) {
+      return createCircularRefAlias(alreadySeenPath);
     }
 
-    return result;
+    circularRefsManager.handleTraversedObject(input, path);
   }
 
-  if (getIsRecord(input)) {
-    const result: JSONValue = {};
+  if (getIsJSONNested(input)) {
+    const result: any = Array.isArray(input) ? [] : {};
 
-    for (const [key, value] of Object.entries(input)) {
-      result[key] = encodeInput(value, circularRefsManager, coder, [
-        ...path,
-        key,
-      ]);
+    for (const [key, value] of iterateJSONNested(input)) {
+      assertNotForbiddenProperty(key);
+      assertNotForbiddenProperty(sanitizePathSegment(key));
+
+      result[sanitizePathSegment(key)] = encodeInput(
+        value,
+        circularRefsManager,
+        coder,
+        addPathSegment(path, key)
+      );
     }
 
     return result;
@@ -73,6 +55,8 @@ export function encodeInput(
 
     return encodeInput(encoded, circularRefsManager, coder, path);
   }
+
+  console.warn("Not able to encode - no matching type found", input);
 
   return null;
 }

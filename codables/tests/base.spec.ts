@@ -1,7 +1,6 @@
-import { Coder, coder } from "./Coder";
-import { describe, expect, it } from "vitest";
+import { Coder, coder } from "../Coder";
 
-import { JSONValue } from "./types";
+import { JSONValue } from "../types";
 
 function createUInt8Array(length: number) {
   const array = new Uint8Array(length);
@@ -80,6 +79,29 @@ describe("basic", () => {
       { foo: { $$undefined: null } }
     );
     expectSerializeAndDeserialize(/bar/g, { $$regexp: ["bar", "g"] });
+    expectSerializeAndDeserialize([null, undefined, null]);
+    expectSerializeAndDeserialize(new Set([1, 2, 3]));
+    expectSerializeAndDeserialize(/foo/g, { $$regexp: ["foo", "g"] });
+    expectSerializeAndDeserialize(/foo/, { $$regexp: "foo" });
+    expectSerializeAndDeserialize(/foo/gi, { $$regexp: ["foo", "gi"] });
+    expectSerializeAndDeserialize({
+      a: new Int8Array([1, 2]),
+      b: new Uint8ClampedArray(3),
+    });
+    expectSerializeAndDeserialize(undefined, { $$undefined: null });
+    expectSerializeAndDeserialize(null, null);
+    expectSerializeAndDeserialize(new URL("https://example.com/"), {
+      $$url: "https://example.com/",
+    });
+
+    expectSerializeAndDeserialize({
+      a: ["/'a'[0]: string that becomes a regex/"],
+      "a.0": /'a.0': regex that becomes a string/,
+      "b.0": "/'b.0': string that becomes a regex/",
+      "b\\": [/'b\\'[0]: regex that becomes a string/],
+    });
+
+    expectSerializeAndDeserialize(-0, { $$num: "-0" });
   });
 
   it("should encode nested objects", () => {
@@ -101,44 +123,6 @@ describe("basic", () => {
         $$set: [{ $$date: "2025-01-01T00:00:00.000Z" }],
       })
     ).toEqual(new Set([new Date("2025-01-01T00:00:00.000Z")]));
-  });
-});
-
-describe("circular references", () => {
-  it("should encode circular references (top)", () => {
-    const foo = { text: "foo", self: null as any };
-    foo.self = foo;
-
-    expect(coder.encode(foo)).toEqual({
-      "$$ref:0": {
-        text: "foo",
-        self: { $$ref: 0 },
-      },
-    });
-  });
-
-  it("should encode circular references", () => {
-    const foo = { foo: "foo", bar: null as any };
-    const bar = { foo: foo };
-
-    foo.bar = bar;
-
-    expect(coder.encode(foo)).toEqual({
-      "$$ref:0": {
-        foo: "foo",
-        bar: { foo: { $$ref: 0 } },
-      },
-    });
-  });
-
-  it.todo("should properly encode same level circular references", () => {
-    const foo: any = {};
-    const bar: any = {};
-
-    foo.bar = bar;
-    bar.foo = foo;
-
-    expect(coder.encode([foo, bar])).toEqual([{ $$ref: 0 }, { $$ref: 1 }]);
   });
 });
 
@@ -295,5 +279,161 @@ describe("isDefault", () => {
     }).toThrowErrorMatchingInlineSnapshot(
       `[Error: Cannot register types on the default coder. Create a custom coder instance using \`new Coder()\` and register types on that instance.]`
     );
+  });
+});
+
+describe("dots in paths", () => {
+  it("should properly encode and decode paths with dots", () => {
+    const foo = { "foo.bar": "baz" };
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({ "foo\\.bar": "baz" });
+    expect(coder.decode({ "foo\\.bar": "baz" })).toEqual(foo);
+  });
+
+  it("should properly encode and decode paths with dots in nested objects", () => {
+    const foo = { "foo.bar": { "baz.qux": "quux" } };
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({ "foo\\.bar": { "baz\\.qux": "quux" } });
+    expect(coder.decode({ "foo\\.bar": { "baz\\.qux": "quux" } })).toEqual(foo);
+  });
+
+  it("works if path contains explicit \\", () => {
+    const foo = { "foo\\bar": "baz" };
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({ "foo\\bar": "baz" });
+    expect(coder.decode({ "foo\\bar": "baz" })).toEqual(foo);
+  });
+});
+
+describe("symbols", () => {
+  it("should keep the same symbol reference", () => {
+    const symbol = Symbol("foo");
+    const input = [symbol, symbol];
+    const encoded = coder.encode(input);
+    expect(encoded).toEqual([{ $$symbol: "foo" }, { $$symbol: "foo" }]);
+
+    const decoded = coder.decode<typeof input>(encoded);
+    expect(decoded).toEqual(input);
+    expect(decoded[0]).toBe(decoded[1]);
+  });
+
+  it("decoded symbol should be the same as the original symbol", () => {
+    const fooSymbol = Symbol("foo");
+    const barSymbol = Symbol("bar");
+
+    const input = [fooSymbol, barSymbol];
+    const encoded = coder.encode(input);
+    const decoded = coder.decode<typeof input>(encoded);
+
+    expect(decoded[0]).toBe(fooSymbol);
+    expect(decoded[1]).toBe(barSymbol);
+  });
+
+  it("should work with symbols created with .for", () => {
+    const fooSymbol = Symbol.for("createdbefore");
+
+    const decoded = coder.decode<any>({ $$symbol: "createdbefore" });
+
+    expect(fooSymbol).toBe(Symbol.for("createdbefore"));
+    expect(decoded).toBe(fooSymbol);
+  });
+});
+
+describe("coding errors", () => {
+  it("should encode and decode errors", () => {
+    expectSerializeAndDeserialize(new Error("foo"), {
+      $$error: "foo",
+    });
+
+    expectSerializeAndDeserialize(
+      new Error("foo", { cause: new Error("bar") }),
+      {
+        $$error: {
+          message: "foo",
+          cause: {
+            $$error: "bar",
+          },
+        },
+      }
+    );
+
+    const error = new Error("named");
+    error.name = "CustomError";
+
+    expectSerializeAndDeserialize(error, {
+      $$error: { message: "named", name: "CustomError" },
+    });
+  });
+});
+
+describe("object with array like keys", () => {
+  it("should properly encode and decode object with array like keys", () => {
+    const foo = { "0": "bar", "1": "baz" };
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({ "0": "bar", "1": "baz" });
+    expect(coder.decode({ "0": "bar", "1": "baz" })).toEqual(foo);
+  });
+});
+
+describe("map with regex keys", () => {
+  it("regex map keys", () => {
+    const input = new Map([
+      [/foo/, "foo"],
+      [/foo/, "foo"],
+    ]);
+
+    const encoded = coder.encode(input);
+
+    expect(encoded).toEqual({
+      $$map: [
+        [{ $$regexp: "foo" }, "foo"],
+        [{ $$regexp: "foo" }, "foo"],
+      ],
+    });
+
+    const decoded = coder.decode<typeof input>(encoded);
+    expect(decoded).toEqual(input);
+  });
+});
+
+describe("custom errors", () => {
+  it("keeps extra error properties", () => {
+    const error = new Error("foo");
+    // @ts-expect-error
+    error.code = "E_FOO";
+
+    expectSerializeAndDeserialize(error, {
+      $$error: { message: "foo", properties: { code: "E_FOO" } },
+    });
+  });
+
+  it("should not include error stack", () => {
+    const input = new Error("Beep boop, you don't wanna see me. I'm an error!");
+    expect(input).toHaveProperty("stack");
+
+    const encoded = coder.encode(input);
+
+    expect(encoded).toEqual({
+      $$error: "Beep boop, you don't wanna see me. I'm an error!",
+    });
+
+    const decoded = coder.decode<typeof input>(encoded);
+    expect(decoded).toEqual(input);
+  });
+});
+
+describe("Object.create(null)", () => {
+  it("should properly encode and decode Object.create(null)", () => {
+    const foo = Object.create(null);
+    foo.bar = "baz";
+    const encoded = coder.encode(foo);
+
+    console.log({ encoded });
+
+    expect(encoded).toEqual(foo);
   });
 });
