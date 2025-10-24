@@ -26,11 +26,9 @@ export function getIsRecord(value: unknown): value is Record<string, unknown> {
     return false;
   }
 
-  return (
-    value.constructor === Object ||
-    value.constructor === null ||
-    value.constructor === undefined
-  );
+  const valuePrototype = Object.getPrototypeOf(value);
+
+  return valuePrototype === Object.prototype || valuePrototype === null;
 }
 
 export function getIsPrimitive(value: unknown): value is Primitive {

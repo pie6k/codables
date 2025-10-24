@@ -23,6 +23,14 @@ function expectSerializeAndDeserialize(
 }
 
 describe("basic", () => {
+  it("works", () => {
+    const date = new Date("2025-01-01T00:00:00.000Z");
+    const foo = coder.encode(date);
+
+    // expect(coder.encode(date)).toEqual({ $$date: date.toISOString() });
+    // expect(coder.decode({ $$date: date.toISOString() })).toEqual(date);
+  });
+
   it("should encode a simple object", () => {
     const date = new Date("2025-01-01T00:00:00.000Z");
     const foo = coder.encode(date);
@@ -432,8 +440,39 @@ describe("Object.create(null)", () => {
     foo.bar = "baz";
     const encoded = coder.encode(foo);
 
-    console.log({ encoded });
-
     expect(encoded).toEqual(foo);
+  });
+});
+
+describe("prototype pollution", () => {
+  it("handles weird inputs", () => {
+    expect(coder.encode({ constructor: {} })).toStrictEqual({});
+  });
+});
+
+describe("format collisions", () => {
+  it("properly encodes and decodes data that collides with internal format", () => {
+    const input = { $$set: [1, 2, 3] };
+
+    const encoded = coder.encode(input);
+
+    expect(encoded).toEqual({ "\\$$set": [1, 2, 3] });
+
+    const decoded = coder.decode<typeof input>(encoded);
+
+    expect(decoded).toEqual(input);
+    expect(decoded.$$set).toEqual([1, 2, 3]);
+  });
+
+  it("handles somehow already escaped type keys", () => {
+    const input = { "\\$$set": [1, 2, 3] };
+
+    const encoded = coder.encode(input);
+
+    expect(encoded).toEqual(input);
+
+    const decoded = coder.decode<typeof input>(encoded);
+
+    expect(decoded).toEqual(input);
   });
 });

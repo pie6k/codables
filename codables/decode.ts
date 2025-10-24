@@ -1,10 +1,14 @@
 import { addPathSegment, unescapePathSegment } from "./utils/paths";
-import { getIsJSONNested, iterateJSONNested } from "./utils";
+import {
+  assertNotForbiddenProperty,
+  getIsForbiddenProperty,
+} from "./utils/security";
+import { getIsEscapedTypeKey, unescapeTypeKey } from "./format";
 import { getIsJSONPrimitive, getIsObject } from "./is";
+import { getIsNestedJSON, iterateNestedJSON } from "./utils";
 
 import { Coder } from "./Coder";
 import { JSONValue } from "./types";
-import { assertNotForbiddenProperty } from "./utils/security";
 import { getIsRefAlias } from "./refs";
 
 type ObjectsMap = Map<string, object>;
@@ -49,15 +53,20 @@ export function decodeInput<T>(
     return source as T;
   }
 
-  if (getIsJSONNested(input)) {
+  if (getIsNestedJSON(input)) {
     const result: any = Array.isArray(input) ? [] : {};
 
     objectsMap.set(path, result);
 
-    for (let [key, value] of iterateJSONNested(input)) {
-      assertNotForbiddenProperty(key);
+    for (let [key, value] of iterateNestedJSON(input)) {
       key = unescapePathSegment(key);
-      assertNotForbiddenProperty(key);
+      if (getIsEscapedTypeKey(key)) {
+        key = unescapeTypeKey(key);
+      }
+
+      if (getIsForbiddenProperty(key)) {
+        continue;
+      }
 
       const decoded = decodeInput<any>(
         value,
