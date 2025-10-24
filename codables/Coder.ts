@@ -7,7 +7,6 @@ import { getCodableClassType, getIsCodableClass } from "./codableClass";
 import { CircularRefsManager } from "./refs";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
-import { parseMaybeCustomTypeWrapper } from "./parseUtils";
 
 const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
   getIsCoderType
@@ -78,10 +77,6 @@ export class Coder {
     }
 
     return null;
-  }
-
-  parseMaybeCustomTypeWrapper(input: unknown) {
-    return parseMaybeCustomTypeWrapper(input, this);
   }
 
   get isDefault() {

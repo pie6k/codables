@@ -1,3 +1,5 @@
+const NON_ESCAPED_DOT = /(?<!\\)\./g;
+
 /**
  * If path includes dots: it will be escaped with \.
  *
@@ -17,7 +19,5 @@ export function unescapePathSegment(segment: string): string {
 }
 
 export function addPathSegment(path: string, segment: string): string {
-  segment = sanitizePathSegment(segment);
-
   return path.length === 0 ? segment : `${path}.${segment}`;
 }

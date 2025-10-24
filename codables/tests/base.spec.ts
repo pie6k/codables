@@ -23,55 +23,32 @@ function expectSerializeAndDeserialize(
 }
 
 describe("basic", () => {
-  it("works", () => {
-    const date = new Date("2025-01-01T00:00:00.000Z");
-    const foo = coder.encode(date);
+  // it("works", () => {
+  //   const date = new Date("2025-01-01T00:00:00.000Z");
+  //   const foo = coder.encode(date);
 
-    // expect(coder.encode(date)).toEqual({ $$date: date.toISOString() });
-    // expect(coder.decode({ $$date: date.toISOString() })).toEqual(date);
-  });
+  //   // expect(coder.encode(date)).toEqual({ $$date: date.toISOString() });
+  //   // expect(coder.decode({ $$date: date.toISOString() })).toEqual(date);
+  // });
 
-  it("should encode a simple object", () => {
-    const date = new Date("2025-01-01T00:00:00.000Z");
-    const foo = coder.encode(date);
-
-    expect(coder.encode(date)).toEqual({ $$date: date.toISOString() });
-    expect(coder.decode({ $$date: date.toISOString() })).toEqual(date);
-
-    expect(coder.encode(/bar/g)).toEqual({ $$regexp: ["bar", "g"] });
-    expect(coder.decode({ $$regexp: ["bar", "g"] })).toEqual(/bar/g);
-
-    expect(coder.encode(new Map([["foo", "bar"]]))).toEqual({
+  it("should encode and decode back properly all basic types", () => {
+    expectSerializeAndDeserialize(new Date("2025-01-01T00:00:00.000Z"), {
+      $$date: "2025-01-01T00:00:00.000Z",
+    });
+    expectSerializeAndDeserialize(new Date("invalid"), { $$date: null });
+    expectSerializeAndDeserialize(/bar/g, { $$regexp: ["bar", "g"] });
+    expectSerializeAndDeserialize(new Map([["foo", "bar"]]), {
       $$map: [["foo", "bar"]],
     });
-    expect(coder.decode({ $$map: [["foo", "bar"]] })).toEqual(
-      new Map([["foo", "bar"]])
-    );
-
-    expect(coder.encode(new Set(["foo", "bar"]))).toEqual({
+    expectSerializeAndDeserialize(new Set(["foo", "bar"]), {
       $$set: ["foo", "bar"],
     });
-    expect(coder.decode({ $$set: ["foo", "bar"] })).toEqual(
-      new Set(["foo", "bar"])
-    );
-
-    expect(coder.encode([undefined])).toEqual([{ $$undefined: null }]);
-    expect(coder.decode([{ $$undefined: null }])).toEqual([undefined]);
-
-    expect(coder.encode(createUInt8Array(10))).toEqual({
-      $$typedArray: { type: "uint8", data: Array.from(createUInt8Array(10)) },
+    expectSerializeAndDeserialize([undefined], [{ $$undefined: null }]);
+    expectSerializeAndDeserialize(createUInt8Array(10), {
+      $$typedArray: { type: "uint8", data: [...createUInt8Array(10)] },
     });
-    expect(
-      coder.decode({
-        $$typedArray: { type: "uint8", data: Array.from(createUInt8Array(10)) },
-      })
-    ).toEqual(createUInt8Array(10));
+    expectSerializeAndDeserialize(NaN, { $$num: "NaN" });
 
-    expect(coder.encode(NaN)).toEqual({ $$num: "NaN" });
-    expect(coder.decode({ $$num: "NaN" })).toEqual(NaN);
-  });
-
-  it("more coding examples", () => {
     expectSerializeAndDeserialize(new Date("2025-01-01T00:00:00.000Z"));
     expectSerializeAndDeserialize(NaN, { $$num: "NaN" });
     expectSerializeAndDeserialize(new Date("invalid"), { $$date: null });
@@ -113,24 +90,12 @@ describe("basic", () => {
   });
 
   it("should encode nested objects", () => {
-    expect(coder.encode(new Set([new Date("2025-01-01T00:00:00.000Z")])))
-      .toMatchInlineSnapshot(`
+    expectSerializeAndDeserialize(
+      new Set([new Date("2025-01-01T00:00:00.000Z")]),
       {
-        "$$set": [
-          {
-            "$$date": "2025-01-01T00:00:00.000Z",
-          },
-        ],
-      }
-    `);
-  });
-
-  it("should decode nested objects", () => {
-    expect(
-      coder.decode({
         $$set: [{ $$date: "2025-01-01T00:00:00.000Z" }],
-      })
-    ).toEqual(new Set([new Date("2025-01-01T00:00:00.000Z")]));
+      }
+    );
   });
 });
 
@@ -456,7 +421,7 @@ describe("format collisions", () => {
 
     const encoded = coder.encode(input);
 
-    expect(encoded).toEqual({ "\\$$set": [1, 2, 3] });
+    expect(encoded).toEqual({ "~$$set": [1, 2, 3] });
 
     const decoded = coder.decode<typeof input>(encoded);
 
@@ -465,14 +430,32 @@ describe("format collisions", () => {
   });
 
   it("handles somehow already escaped type keys", () => {
-    const input = { "\\$$set": [1, 2, 3] };
+    const input = { "~$$set": [1, 2, 3] };
 
     const encoded = coder.encode(input);
 
-    expect(encoded).toEqual(input);
+    expect(encoded).toEqual({ "~~$$set": [1, 2, 3] });
 
     const decoded = coder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual(input);
+  });
+
+  it("can re-encode n times and then decode back properly", () => {
+    const N = 5;
+    const input = { $$set: [1, 2, 3] };
+
+    let current: any = input;
+    for (let i = 0; i < N; i++) {
+      current = coder.encode(current);
+    }
+
+    expect(current).toEqual({ "~~~~~$$set": [1, 2, 3] });
+
+    for (let i = 0; i < N; i++) {
+      current = coder.decode(current);
+    }
+
+    expect(current).toEqual(input);
   });
 });

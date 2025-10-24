@@ -1,3 +1,5 @@
+import { TypeKey, TypeWrapper } from "./format";
+
 import { Coder } from "./Coder";
 import { getIsRecord } from "./is";
 
@@ -8,21 +10,13 @@ interface CoderTypeDefinition<Item, Data> {
   canHandle: (value: unknown) => value is Item;
 }
 
-type CustomTypeKey<Name extends string> = `$$${Name}`;
-
-type CustomTypeWrapper<Name extends string, Type> = {
-  [key in CustomTypeKey<Name>]: Type;
-};
-
 function wrapAsCustomType<Name extends string, Data>(
   name: Name,
   data: Data
-): CustomTypeWrapper<Name, Data> {
-  const wrapper = {
+): TypeWrapper<Data, Name> {
+  return {
     [`$$${name}`]: data,
-  } as CustomTypeWrapper<Name, Data>;
-
-  return wrapper;
+  } as TypeWrapper<Data, Name>;
 }
 
 export class CoderType<Item = any, Data = any> {
@@ -32,7 +26,7 @@ export class CoderType<Item = any, Data = any> {
     return this.definition.name;
   }
 
-  get wrapperKey() {
+  get wrapperKey(): TypeKey<typeof this.name> {
     return `$$${this.name}`;
   }
 
@@ -44,7 +38,7 @@ export class CoderType<Item = any, Data = any> {
     return this.definition.decode;
   }
 
-  encode(value: Item): CustomTypeWrapper<string, Data> {
+  encode(value: Item): TypeWrapper<Data, typeof this.name> {
     const encodedData = this.encoder(value);
 
     return wrapAsCustomType(this.name, encodedData);

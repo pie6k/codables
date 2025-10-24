@@ -1,3 +1,4 @@
+import { decodeSpecialNumber, getSpecialNumberType } from "./utils/numbers";
 import {
   getIsTypedArray,
   getTypedArrayConstructor,
@@ -6,7 +7,11 @@ import {
 
 import { createCoderType } from "./CoderType";
 import { getErrorExtraProperties } from "./utils/errors";
-import { getSpecialNumberType } from "./utils/numbers";
+import { getSymbolKey } from "./utils/misc";
+
+/**
+ * This is the list of all built-in coders that are used to encode and decode basic types.
+ */
 
 export const $$undefined = createCoderType(
   "undefined",
@@ -22,11 +27,15 @@ function getIsValidDate(date: Date): boolean {
 export const $$date = createCoderType(
   "date",
   (value) => value instanceof Date,
-  (date) => (getIsValidDate(date) ? date.toISOString() : null),
-  (isoString) => {
-    if (isoString === null) return new Date("invalid");
+  (date) => {
+    if (!getIsValidDate(date)) return null;
 
-    return new Date(isoString);
+    return date.toISOString();
+  },
+  (maybeISOString) => {
+    if (maybeISOString === null) return new Date("invalid");
+
+    return new Date(maybeISOString);
   }
 );
 
@@ -40,14 +49,14 @@ export const $$bigInt = createCoderType(
 export const $$set = createCoderType(
   "set",
   (value) => value instanceof Set,
-  (set) => Array.from(set),
+  (set) => [...set],
   (array) => new Set(array)
 );
 
 export const $$map = createCoderType(
   "map",
   (value) => value instanceof Map,
-  (map) => Array.from(map.entries()),
+  (map) => [...map.entries()],
   (entries) => new Map(entries)
 );
 
@@ -57,6 +66,7 @@ export const $$regexp = createCoderType(
   ({ source, flags }) => {
     if (flags) return [source, flags] as const;
 
+    // Optimization - if there are no flags, we can just return the source as a string
     return source;
   },
   (sourceOrSourceAndFlags) => {
@@ -102,8 +112,10 @@ export const $$error = createCoderType(
       data.name === undefined &&
       data.cause === undefined &&
       data.properties === undefined
-    )
+    ) {
+      // Optimization - if there are no extra properties, we can just return the message as a string
       return data.message;
+    }
 
     return data;
   },
@@ -135,31 +147,19 @@ export const $$url = createCoderType(
 
 const symbolsRegistry = new Map<string, symbol>();
 
-function getSymbolName(symbol: symbol): string {
-  const nativeKey = Symbol.keyFor(symbol);
-  if (nativeKey) return nativeKey;
-
-  const toStringResult = symbol.toString(); // eg "Symbol(foo)"
-  return toStringResult.slice(7, -1); // "foo"
-}
-
-function registerSymbol(symbol: symbol) {
-  const name = getSymbolName(symbol);
-  symbolsRegistry.set(name, symbol);
-}
-
-function getSymbol(symbolKey: string): symbol {
-  return symbolsRegistry.get(symbolKey) ?? Symbol.for(symbolKey);
-}
-
 export const $$symbol = createCoderType(
   "symbol",
   (value) => typeof value === "symbol",
   (symbol) => {
-    registerSymbol(symbol);
-    return getSymbolName(symbol);
+    const symbolKey = getSymbolKey(symbol);
+
+    symbolsRegistry.set(symbolKey, symbol);
+
+    return symbolKey;
   },
-  (symbolKey) => getSymbol(symbolKey)
+  (symbolKey) => {
+    return symbolsRegistry.get(symbolKey) ?? Symbol.for(symbolKey);
+  }
 );
 
 export const $$typedArray = createCoderType(
@@ -169,23 +169,28 @@ export const $$typedArray = createCoderType(
     const type = getTypedArrayType(value)!;
     return {
       type,
-      data: Array.from(value),
+      data: [...value],
     };
   },
-  ({ type, data }) => new (getTypedArrayConstructor(type))(data)
+  ({ type, data }) => {
+    const TypedArrayClass = getTypedArrayConstructor(type);
+
+    if (!TypedArrayClass) {
+      throw new Error(`Unknown typed array type: ${type}`);
+    }
+
+    return new TypedArrayClass(data);
+  }
 );
 
+/**
+ * Handles special numbers like NaN, Infinity, -Infinity, -0 that are not correctly serialized by
+ * regular JSON
+ */
 export const $$num = createCoderType(
   "num",
   (value): value is number =>
     typeof value === "number" && !!getSpecialNumberType(value),
-  (value) => getSpecialNumberType(value),
-  (value) => {
-    if (value === "NaN") return NaN;
-    if (value === "Infinity") return Infinity;
-    if (value === "-Infinity") return -Infinity;
-    if (value === "-0") return -0;
-
-    throw new Error(`Invalid special number type: ${value}`);
-  }
+  getSpecialNumberType,
+  decodeSpecialNumber
 );
