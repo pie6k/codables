@@ -728,6 +728,7 @@ __metadata:
   dependencies:
     "@types/node": "npm:^24.9.1"
     "@vitest/coverage-v8": "npm:4.0.1"
+    superjson: "npm:^2.2.3"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.1"
   languageName: unknown
@@ -746,6 +747,15 @@ __metadata:
   version: 1.1.4
   resolution: "color-name@npm:1.1.4"
   checksum: 10c0/a1a3f914156960902f46f7f56bc62effc6c94e84b2cae157a526b1c1f74b677a47ec602bf68a61abfa2b42d15b7c5651c6dbe72a43af720bc588dff885b10f95
+  languageName: node
+  linkType: hard
+
+"copy-anything@npm:^4":
+  version: 4.0.5
+  resolution: "copy-anything@npm:4.0.5"
+  dependencies:
+    is-what: "npm:^5.2.0"
+  checksum: 10c0/d0a4a4102334399dae8504a2c2e13f45ad05746a9fd5cc0df349a554e3749a05e8a6d62b3724a8049cd59fc0bbbf4f54c4edc94a428edc76211dffe3ac0af586
   languageName: node
   linkType: hard
 
@@ -1076,6 +1086,13 @@ __metadata:
   version: 3.0.0
   resolution: "is-fullwidth-code-point@npm:3.0.0"
   checksum: 10c0/bb11d825e049f38e04c06373a8d72782eee0205bda9d908cc550ccb3c59b99d750ff9537982e01733c1c94a58e35400661f57042158ff5e8f3e90cf936daf0fc
+  languageName: node
+  linkType: hard
+
+"is-what@npm:^5.2.0":
+  version: 5.5.0
+  resolution: "is-what@npm:5.5.0"
+  checksum: 10c0/065c8a4ac651988a495cc0211c2754c198788383c9fe1bbfdf6d237c423114a0c5f2fc3e26ad7ea43a63cd4169f4503f584305acbac91706d5308cc14dedd1bd
   languageName: node
   linkType: hard
 
@@ -1655,6 +1672,15 @@ __metadata:
   dependencies:
     ansi-regex: "npm:^6.0.1"
   checksum: 10c0/0d6d7a023de33368fd042aab0bf48f4f4077abdfd60e5393e73c7c411e85e1b3a83507c11af2e656188511475776215df9ca589b4da2295c9455cc399ce1858b
+  languageName: node
+  linkType: hard
+
+"superjson@npm:^2.2.3":
+  version: 2.2.3
+  resolution: "superjson@npm:2.2.3"
+  dependencies:
+    copy-anything: "npm:^4"
+  checksum: 10c0/276179f4a56be5c73ebb25abf07a4801d6b000f98a31ebaa3f41da1342f9d31c7fadde81bf79db8eeeec7f0ba8f62c30ca681b166a0244e1414f33fbb750c358
   languageName: node
   linkType: hard
 

@@ -17,25 +17,58 @@ export class Coder {
   private typesMap = new Map<string, CoderType>(
     DEFAULT_TYPES.map((type) => [type.name, type])
   );
+  private registeredClasses = new WeakSet<AnyCodableClass<any>>();
 
   getTypeByName(name: string): CoderType | null {
     return this.typesMap.get(name) ?? null;
   }
 
-  registerType<Item, Data>(type: CoderType<Item, Data>) {
+  registerType(...types: Array<CoderType>) {
     if (this.isDefault) {
       throw new Error(
         "Cannot register types on the default coder. Create a custom coder instance using `new Coder()` and register types on that instance."
       );
     }
 
-    if (this.typesMap.has(type.name)) {
-      throw new Error(`Coder type "${type.name}" already registered`);
+    for (const type of types) {
+      if (this.typesMap.has(type.name)) {
+        throw new Error(`Coder type "${type.name}" already registered`);
+      }
+
+      this.typesMap.set(type.name, type);
+    }
+  }
+
+  registerClass(...classes: Array<AnyCodableClass<any>>) {
+    if (this.isDefault) {
+      throw new Error(
+        "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance."
+      );
     }
 
-    this.typesMap.set(type.name, type);
+    for (const Class of classes) {
+      const codableClassType = getCodableClassType(Class);
+      if (!codableClassType) continue;
 
-    return type;
+      if (this.registeredClasses.has(Class)) continue;
+
+      this.registerType(codableClassType);
+      this.registeredClasses.add(Class);
+    }
+  }
+
+  register(
+    ...typesOrClasses: Array<AnyCodableClass<any> | CoderType<any, any>>
+  ) {
+    for (const typeOrClass of typesOrClasses) {
+      if (typeOrClass instanceof CoderType) {
+        this.registerType(typeOrClass);
+      } else if (getIsCodableClass(typeOrClass)) {
+        this.registerClass(typeOrClass);
+      } else {
+        throw new Error(`Invalid type or class: ${typeOrClass}`);
+      }
+    }
   }
 
   /**
@@ -53,13 +86,13 @@ export class Coder {
   encode<T>(value: T): JSONValue {
     const encodeContext = new EncodeContext();
 
-    return encodeInput(value, encodeContext, this, JSONPointer.root);
+    return encodeInput(value, encodeContext, this, []);
   }
 
   decode<T>(value: JSONValue): T {
     const objectsMap = new Map<string, object>();
 
-    return decodeInput<T>(value, objectsMap, this, JSONPointer.root);
+    return decodeInput<T>(value, objectsMap, this, []);
   }
 
   stringify<T>(value: T): string {
@@ -82,26 +115,6 @@ export class Coder {
 
   get isDefault() {
     return this === coder;
-  }
-
-  registerClass<T extends AnyCodableClass<any>>(Class: T) {
-    if (this.isDefault) {
-      throw new Error(
-        "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance."
-      );
-    }
-
-    if (!getIsCodableClass(Class)) {
-      throw new Error(`Class "${Class.name}" is not codable`);
-    }
-
-    const codableClassType = getCodableClassType(Class);
-
-    if (!codableClassType) {
-      throw new Error(`Class "${Class.name}" is not codable`);
-    }
-
-    return this.registerType(codableClassType);
   }
 }
 

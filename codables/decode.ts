@@ -1,3 +1,7 @@
+import {
+  JSONPointer,
+  getJSONPointerStringFromSegments,
+} from "./utils/JSONPointer";
 import { getIsJSONPrimitive, getIsObject } from "./is";
 import { getIsNestedJSON, iterateNestedJSON } from "./utils";
 import {
@@ -7,7 +11,6 @@ import {
 } from "./format";
 
 import { Coder } from "./Coder";
-import { JSONPointer } from "./utils/JSONPointer";
 import { JSONValue } from "./types";
 import { getIsForbiddenProperty } from "./utils/security";
 import { maybeUnescapeInput } from "./escape";
@@ -18,7 +21,7 @@ export function decodeInput<T>(
   input: JSONValue,
   objectsMap: ObjectsMap,
   coder: Coder,
-  path: JSONPointer
+  path: string[]
 ): T {
   if (getIsJSONPrimitive(input)) {
     return input as T;
@@ -47,7 +50,7 @@ export function decodeInput<T>(
       input[matchingType.wrapperKey],
       objectsMap,
       coder,
-      path.addSegment(matchingType.wrapperKey)
+      [...path, matchingType.wrapperKey]
     );
 
     // Now decode data is ready, we can decode it using the type definition
@@ -95,15 +98,16 @@ export function decodeInput<T>(
         continue;
       }
 
-      const decoded = decodeInput<any>(
-        value,
-        objectsMap,
-        coder,
-        path.addSegment(key)
-      );
+      const decoded = decodeInput<any>(value, objectsMap, coder, [
+        ...path,
+        key,
+      ]);
 
       if (getIsObject(decoded)) {
-        objectsMap.set(path.addSegment(key).toString(), decoded);
+        objectsMap.set(
+          getJSONPointerStringFromSegments([...path, key]),
+          decoded
+        );
       }
 
       result[key] = decoded;

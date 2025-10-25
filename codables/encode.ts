@@ -13,7 +13,7 @@ export function encodeInput(
   input: unknown,
   encodeContext: EncodeContext,
   coder: Coder,
-  path: JSONPointer
+  path: string[]
 ): JSONValue {
   if (getIsJSONPrimitive(input)) {
     return input;
@@ -58,12 +58,7 @@ export function encodeInput(
        */
       if (getIsForbiddenProperty(key)) continue;
 
-      result[key] = encodeInput(
-        value,
-        encodeContext,
-        coder,
-        path.addSegment(key)
-      );
+      result[key] = encodeInput(value, encodeContext, coder, [...path, key]);
     }
 
     return result;
@@ -90,7 +85,7 @@ export function encodeInput(
       encodeContext,
       coder,
       // As object is wrapped in eg. { $$set: [1, 2, 3] }, we need to add the path segment
-      path.addSegment(matchingType.wrapperKey)
+      [...path, matchingType.wrapperKey]
     );
 
     return wrapper;

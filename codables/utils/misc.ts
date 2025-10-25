@@ -1,3 +1,13 @@
+export type Thunk<T> = T | (() => T);
+
+export function resolveThunk<T>(thunk: Thunk<T>): T {
+  if (typeof thunk === "function") {
+    return (thunk as () => T)();
+  }
+
+  return thunk;
+}
+
 export function* typedEntries<T extends object>(input: T) {
   for (const [key, value] of Object.entries(input)) {
     yield [key as keyof T, value] as const;

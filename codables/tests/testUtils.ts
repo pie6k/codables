@@ -1,3 +1,6 @@
+import { JSONValue } from "../types";
+import { getIsPrimitive } from "../is";
+
 /**
  * Example:
  * ```
@@ -19,4 +22,17 @@ export function captureWarnings() {
       console.warn = originalConsoleWarn;
     },
   };
+}
+
+export function jsonBaselineTraverse(json: JSONValue): JSONValue {
+  if (getIsPrimitive(json)) return json;
+
+  if (Array.isArray(json)) return json.map(jsonBaselineTraverse);
+
+  return Object.fromEntries(
+    Object.entries(json).map(([key, value]) => [
+      key,
+      jsonBaselineTraverse(value),
+    ])
+  );
 }

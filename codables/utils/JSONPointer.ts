@@ -47,3 +47,7 @@ export class JSONPointer {
     return current;
   }
 }
+
+export function getJSONPointerStringFromSegments(segments: string[]): string {
+  return "/" + segments.map(escapePathSegment).join("/");
+}

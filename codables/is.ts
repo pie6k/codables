@@ -22,9 +22,7 @@ export function getIsJSONPrimitive(value: unknown): value is JSONPrimitive {
  * Returns false for instances of classes, functions, etc.
  */
 export function getIsRecord(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
+  if (!value) return false;
 
   const valuePrototype = Object.getPrototypeOf(value);
 
