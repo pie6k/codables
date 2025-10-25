@@ -1,9 +1,14 @@
 export function getSpecialNumberType(value: number) {
+  switch (value) {
+    case Infinity:
+      return "Infinity";
+    case -Infinity:
+      return "-Infinity";
+    case 0:
+      if (1 / value === -Infinity) return "-0";
+  }
+
   if (isNaN(value)) return "NaN";
-  if (value === Infinity) return "Infinity";
-  if (value === -Infinity) return "-Infinity";
-  // No idea what use case this is for, but it's a valid special number (and JSON normally serializes it as 0)
-  if (value === 0 && 1 / value === -Infinity) return "-0";
 
   return null;
 }
@@ -11,10 +16,16 @@ export function getSpecialNumberType(value: number) {
 type SpecialNumberType = ReturnType<typeof getSpecialNumberType>;
 
 export function decodeSpecialNumber(value: SpecialNumberType): number {
-  if (value === "NaN") return NaN;
-  if (value === "Infinity") return Infinity;
-  if (value === "-Infinity") return -Infinity;
-  if (value === "-0") return -0;
-
-  throw new Error(`Invalid special number type: ${value}`);
+  switch (value) {
+    case "NaN":
+      return NaN;
+    case "Infinity":
+      return Infinity;
+    case "-Infinity":
+      return -Infinity;
+    case "-0":
+      return -0;
+    default:
+      throw new Error(`Invalid special number type: ${value}`);
+  }
 }

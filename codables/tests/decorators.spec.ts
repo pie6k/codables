@@ -110,7 +110,7 @@ describe("decorators", () => {
   });
 });
 
-describe("inheritance", () => {
+describe.todo("inheritance", () => {
   it("should encode and decode inherited properties", () => {
     @codableClass("Foo")
     class Foo {

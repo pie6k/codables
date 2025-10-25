@@ -23,6 +23,10 @@ export function maybeEscapeTypeWrapper(input: unknown) {
 
 const ESCAPED_TYPE_KEY_REGEXP = /^~+\$\$/;
 
+export function getIsEscapedWrapperKey(key: string): boolean {
+  return ESCAPED_TYPE_KEY_REGEXP.test(key);
+}
+
 export function maybeUnescapeInput(input: JSONValue): JSONValue {
   if (!getIsRecord(input)) return input;
 

@@ -23,14 +23,20 @@ export function getIsTypedArray(value: unknown): value is TypedArray {
   return false;
 }
 
-export function getTypedArrayType(value: unknown): TypedArrayTypeName | null {
+export function getTypedArrayType(value: TypedArray): TypedArrayTypeName {
   for (const [name, type] of Object.entries(TYPED_ARRAY_MAP)) {
     if (value instanceof type) return name as TypedArrayTypeName;
   }
 
-  return null;
+  throw new Error(`Unknown typed array type: ${value}`);
 }
 
 export function getTypedArrayConstructor(type: TypedArrayTypeName) {
-  return TYPED_ARRAY_MAP[type];
+  const TypedArrayClass = TYPED_ARRAY_MAP[type];
+
+  if (!TypedArrayClass) {
+    throw new Error(`Unknown typed array type: ${type}`);
+  }
+
+  return TypedArrayClass;
 }

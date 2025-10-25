@@ -4,8 +4,8 @@ import { AnyCodableClass, JSONValue } from "./types";
 import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
 import { getCodableClassType, getIsCodableClass } from "./codableClass";
 
+import { DecodeContext } from "./DecodeContext";
 import { EncodeContext } from "./EncodeContext";
-import { JSONPointer } from "./utils/JSONPointer";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
 
@@ -17,6 +17,7 @@ export class Coder {
   private typesMap = new Map<string, CoderType>(
     DEFAULT_TYPES.map((type) => [type.name, type])
   );
+
   private registeredClasses = new WeakSet<AnyCodableClass<any>>();
 
   getTypeByName(name: string): CoderType | null {
@@ -86,13 +87,13 @@ export class Coder {
   encode<T>(value: T): JSONValue {
     const encodeContext = new EncodeContext();
 
-    return encodeInput(value, encodeContext, this, []);
+    return encodeInput(value, encodeContext, this, "/");
   }
 
   decode<T>(value: JSONValue): T {
-    const objectsMap = new Map<string, object>();
+    const context = new DecodeContext(value);
 
-    return decodeInput<T>(value, objectsMap, this, []);
+    return decodeInput<T>(value, context, this, "/");
   }
 
   stringify<T>(value: T): string {

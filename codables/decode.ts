@@ -1,122 +1,110 @@
-import {
-  JSONPointer,
-  getJSONPointerStringFromSegments,
-} from "./utils/JSONPointer";
-import { getIsJSONPrimitive, getIsObject } from "./is";
-import { getIsNestedJSON, iterateNestedJSON } from "./utils";
-import {
-  getIsRefAlias,
-  getIsTypeWrapper,
-  getTypeWrapperTypeName,
-} from "./format";
+import { JSONArray, JSONObject, JSONValue } from "./types";
 
 import { Coder } from "./Coder";
-import { JSONValue } from "./types";
+import { DecodeContext } from "./DecodeContext";
+import { TypeWrapper } from "./format";
+import { addPathSegment } from "./utils/JSONPointer";
+import { getDecodableTypeOf } from "./utils/typeof";
+import { getIsEscapedWrapperKey } from "./escape";
 import { getIsForbiddenProperty } from "./utils/security";
-import { maybeUnescapeInput } from "./escape";
-
-type ObjectsMap = Map<string, object>;
+import { getIsObject } from "./is";
+import { unsafeAssertType } from "./utils/assert";
 
 export function decodeInput<T>(
   input: JSONValue,
-  objectsMap: ObjectsMap,
+  context: DecodeContext,
   coder: Coder,
-  path: string[]
+  path: string
 ): T {
-  if (getIsJSONPrimitive(input)) {
-    return input as T;
-  }
+  const decodableTypeOf = getDecodableTypeOf(input);
 
-  /**
-   * See if this is an object like { $$set: [1, 2, 3] }
-   * If so, it is a custom type and we need to decode it.
-   */
-  if (getIsTypeWrapper(input)) {
-    // Eg. "set"
-    const typeName = getTypeWrapperTypeName(input);
+  if (decodableTypeOf === "primitive") return input as T;
 
-    // Get the type definition so we can decode the data
-    const matchingType = coder.getTypeByName(typeName);
+  const entries = Object.entries(input as JSONObject | JSONArray);
 
-    if (!matchingType) {
-      throw new Error(`Unknown custom type: ${typeName}`);
-    }
+  if (decodableTypeOf === "record" && entries.length === 1) {
+    const [key, value] = entries[0];
 
-    /**
-     * Decode data is present at eg input["$$set"], but it might contain some nested data that
-     * needs to be decoded first.
-     */
-    const decodedData = decodeInput(
-      input[matchingType.wrapperKey],
-      objectsMap,
-      coder,
-      [...path, matchingType.wrapperKey]
-    );
+    if (key === "$$ref" && typeof value === "string") {
+      const source = context.resolveRefAlias(value);
 
-    // Now decode data is ready, we can decode it using the type definition
-    return matchingType.decoder(decodedData) as T;
-  }
-
-  input = maybeUnescapeInput(input);
-
-  /**
-   * This is a reference to some other object that was already decoded,
-   * simply resolve it and return the object reference
-   */
-  if (getIsRefAlias(input)) {
-    const refPath = input.$$ref;
-
-    const source = objectsMap.get(refPath);
-
-    if (!source) {
-      /**
-       * TODO: Assumption here is that data is always encoded and decoded in the same order,
-       * aka if we encode aka. meet some object as the first, it will also be decoded as the first
-       * out of all other places where the same reference is used.
-       *
-       * If this is not the case, we might need some flag to indicate we need to wait and perform
-       * aliases resolution later.
-       */
-      throw new Error(`Source not found for ref path: ${refPath}`);
-    }
-
-    return source as T;
-  }
-
-  if (getIsNestedJSON(input)) {
-    const result: any = Array.isArray(input) ? [] : {};
-
-    // Register the reference instantly in case something that will now be decoded references this object
-    objectsMap.set(path.toString(), result);
-
-    for (let [key, value] of iterateNestedJSON(input)) {
-      /**
-       * We need to skip forbidden properties such as `__proto__`, `constructor`, `prototype`, etc.
-       * This could be a potential security risk, allowing attackers to pollute the prototype chain.
-       */
-      if (getIsForbiddenProperty(key)) {
-        continue;
-      }
-
-      const decoded = decodeInput<any>(value, objectsMap, coder, [
-        ...path,
-        key,
-      ]);
-
-      if (getIsObject(decoded)) {
-        objectsMap.set(
-          getJSONPointerStringFromSegments([...path, key]),
-          decoded
+      if (!source) {
+        console.warn(
+          `Reference could not be resolved while decoding (${value}) at ${path}`
         );
+        /**
+         * TODO: Assumption here is that data is always encoded and decoded in the same order,
+         * aka if we encode aka. meet some object as the first, it will also be decoded as the first
+         * out of all other places where the same reference is used.
+         *
+         * If this is not the case, we might need some flag to indicate we need to wait and perform
+         * aliases resolution later.
+         */
+        return null as T;
       }
 
-      result[key] = decoded;
+      return source as T;
     }
 
-    return result as T;
+    if (context.hasCustomTypes && key.startsWith("$$") && key !== "$$ref") {
+      unsafeAssertType<TypeWrapper>(input);
+      const typeName = key.slice(2);
+
+      const matchingType = coder.getTypeByName(typeName);
+
+      if (!matchingType) {
+        console.warn(
+          `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`
+        );
+        return value as T;
+      }
+
+      /**
+       * Decode data is present at eg input["$$set"], but it might contain some nested data that
+       * needs to be decoded first.
+       */
+      const decodedTypeInput = decodeInput(
+        input[matchingType.wrapperKey],
+        context,
+        coder,
+        addPathSegment(path, matchingType.wrapperKey)
+      );
+
+      // Now decode data is ready, we can decode it using the type definition
+      return matchingType.decoder(decodedTypeInput) as T;
+    }
+
+    // If we are dealing with an escaped wrapper key, we need to unescape it
+    // eg. { "~$$set": [1, 2, 3] } -> { "$$set": [1, 2, 3] }
+    // It happens if someone encoded data that already looks like our internal format.
+    if (getIsEscapedWrapperKey(key)) {
+      entries[0][0] = key.slice(1);
+    }
   }
 
-  // throw new Error(`Non-json value was passed to decode at path: ${path}`);
+  const result: any = decodableTypeOf === "array" ? [] : {};
 
-  return input as T;
+  // The result is not yet ready, but we already have its reference and path, so we can register it
+  // in case something eg. directly inside of it references its parent, eg { foo: { parent: <<refToParent>>}}
+  context.registerRefIfNeeded(path, result);
+
+  for (const [key, value] of entries) {
+    /**
+     * We need to skip forbidden properties such as `__proto__`, `constructor`, `prototype`, etc.
+     * This could be a potential security risk, allowing attackers to pollute the prototype chain.
+     */
+    if (getIsForbiddenProperty(key)) continue;
+
+    const fullPath = addPathSegment(path, key);
+
+    const decoded = decodeInput<any>(value, context, coder, fullPath);
+
+    result[key] = decoded;
+
+    if (context.hasRefAliases && getIsObject(decoded)) {
+      context.registerRefIfNeeded(fullPath, decoded);
+    }
+  }
+
+  return result as T;
 }

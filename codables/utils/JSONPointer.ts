@@ -1,9 +1,9 @@
 function escapePathSegment(segment: string): string {
-  return segment.replace(/~/g, "~0").replace(/\//g, "~1");
+  return segment.replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
 function unescapePathSegment(segment: string): string {
-  return segment.replace(/~1/g, "/").replace(/~0/g, "~");
+  return segment.replaceAll("~1", "/").replaceAll("~0", "~");
 }
 
 export class JSONPointer {
@@ -48,6 +48,10 @@ export class JSONPointer {
   }
 }
 
-export function getJSONPointerStringFromSegments(segments: string[]): string {
-  return "/" + segments.map(escapePathSegment).join("/");
+export function addPathSegment(pointer: string, segment: string): string {
+  if (pointer === "/" || pointer === "") {
+    return `/${escapePathSegment(segment)}`;
+  }
+
+  return `${pointer}/${escapePathSegment(segment)}`;
 }

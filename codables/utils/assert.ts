@@ -19,3 +19,5 @@ export function assertGet<T>(
 
   return value;
 }
+
+export function unsafeAssertType<T>(value: unknown): asserts value is T {}

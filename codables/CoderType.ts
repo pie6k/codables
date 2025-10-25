@@ -1,8 +1,5 @@
 import { TypeKey, TypeWrapper } from "./format";
 
-import { Coder } from "./Coder";
-import { getIsRecord } from "./is";
-
 interface CoderTypeDefinition<Item, Data> {
   name: string;
   encode: (data: Item) => Data;
@@ -46,6 +43,10 @@ export class CoderType<Item = any, Data = any> {
 
   canHandle(value: unknown): value is Item {
     return this.definition.canHandle(value);
+  }
+
+  wrap(data: Data): TypeWrapper<Data, typeof this.name> {
+    return wrapAsCustomType(this.name, data);
   }
 }
 

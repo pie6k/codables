@@ -21,3 +21,17 @@ export function getSymbolKey(symbol: symbol): string {
   const toStringResult = symbol.toString(); // eg "Symbol(foo)"
   return toStringResult.slice(7, -1); // "foo"
 }
+
+export function removeUndefinedProperties<T extends Record<string, unknown>>(
+  input: T
+): T {
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+
+  return result as T;
+}
