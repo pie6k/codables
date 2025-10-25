@@ -1,9 +1,4 @@
-import { addPathSegment, unescapePathSegment } from "./utils/paths";
-import {
-  assertNotForbiddenProperty,
-  getIsForbiddenProperty,
-} from "./utils/security";
-import { getIsJSONPrimitive, getIsObject, getIsRecord } from "./is";
+import { getIsJSONPrimitive, getIsObject } from "./is";
 import { getIsNestedJSON, iterateNestedJSON } from "./utils";
 import {
   getIsRefAlias,
@@ -12,33 +7,18 @@ import {
 } from "./format";
 
 import { Coder } from "./Coder";
+import { JSONPointer } from "./utils/JSONPointer";
 import { JSONValue } from "./types";
+import { getIsForbiddenProperty } from "./utils/security";
+import { maybeUnescapeInput } from "./escape";
 
 type ObjectsMap = Map<string, object>;
-
-const ESCAPED_TYPE_KEY_REGEXP = /^~+\$\$/;
-
-function maybeUnescapeInput(input: JSONValue): JSONValue {
-  if (!getIsRecord(input)) return input;
-
-  const entries = Object.entries(input);
-
-  if (entries.length !== 1) return input;
-
-  const [key, value] = entries[0];
-
-  if (!ESCAPED_TYPE_KEY_REGEXP.test(key)) return input;
-
-  const unescapedKey = key.slice(1);
-
-  return { [unescapedKey]: value } as JSONValue;
-}
 
 export function decodeInput<T>(
   input: JSONValue,
   objectsMap: ObjectsMap,
   coder: Coder,
-  path: string
+  path: JSONPointer
 ): T {
   if (getIsJSONPrimitive(input)) {
     return input as T;
@@ -67,7 +47,7 @@ export function decodeInput<T>(
       input[matchingType.wrapperKey],
       objectsMap,
       coder,
-      addPathSegment(path, matchingType.wrapperKey)
+      path.addSegment(matchingType.wrapperKey)
     );
 
     // Now decode data is ready, we can decode it using the type definition
@@ -104,18 +84,9 @@ export function decodeInput<T>(
     const result: any = Array.isArray(input) ? [] : {};
 
     // Register the reference instantly in case something that will now be decoded references this object
-    objectsMap.set(path, result);
+    objectsMap.set(path.toString(), result);
 
     for (let [key, value] of iterateNestedJSON(input)) {
-      /**
-       * In the input, the key might be escaped, so we need to unescape it.
-       * - if in original we had object like { "foo.bar": "baz" }, encoded version we have here is { "foo\.bar": "baz" }
-       * - if in original we had object colliding with our internal format
-       *   like { "$$foo": "baz" }, encoded version we have here is { "\\$$foo": "baz" }
-       */
-      // eg. "foo\.bar" -> "foo.bar"
-      key = unescapePathSegment(key);
-
       /**
        * We need to skip forbidden properties such as `__proto__`, `constructor`, `prototype`, etc.
        * This could be a potential security risk, allowing attackers to pollute the prototype chain.
@@ -128,14 +99,14 @@ export function decodeInput<T>(
         value,
         objectsMap,
         coder,
-        addPathSegment(path, key)
+        path.addSegment(key)
       );
 
       if (getIsObject(decoded)) {
-        objectsMap.set(addPathSegment(path, key), decoded);
+        objectsMap.set(path.addSegment(key).toString(), decoded);
       }
 
-      result[key as keyof typeof result] = decoded;
+      result[key] = decoded;
     }
 
     return result as T;

@@ -4,7 +4,8 @@ import { AnyCodableClass, JSONValue } from "./types";
 import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
 import { getCodableClassType, getIsCodableClass } from "./codableClass";
 
-import { CircularRefsManager } from "./refs";
+import { EncodeContext } from "./EncodeContext";
+import { JSONPointer } from "./utils/JSONPointer";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
 
@@ -50,15 +51,15 @@ export class Coder {
   }
 
   encode<T>(value: T): JSONValue {
-    const circularRefsManager = new CircularRefsManager();
+    const encodeContext = new EncodeContext();
 
-    return encodeInput(value, circularRefsManager, this, "#");
+    return encodeInput(value, encodeContext, this, JSONPointer.root);
   }
 
   decode<T>(value: JSONValue): T {
     const objectsMap = new Map<string, object>();
 
-    return decodeInput<T>(value, objectsMap, this, "#");
+    return decodeInput<T>(value, objectsMap, this, JSONPointer.root);
   }
 
   stringify<T>(value: T): string {

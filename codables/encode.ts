@@ -1,43 +1,19 @@
-import {
-  RefAlias,
-  TypeWrapper,
-  getIsTypeKey,
-  getIsTypeWrapper,
-} from "./format";
-import { addPathSegment, sanitizePathSegment } from "./utils/paths";
-import { getIsJSONPrimitive, getIsObject, getIsRecord } from "./is";
+import { RefAlias } from "./format";
+import { getIsJSONPrimitive, getIsObject } from "./is";
 import { getIsNestedJSON, iterateNestedJSON } from "./utils";
 
-import { CircularRefsManager } from "./refs";
 import { Coder } from "./Coder";
+import { maybeEscapeTypeWrapper } from "./escape";
 import { JSONValue } from "./types";
+import { JSONPointer } from "./utils/JSONPointer";
 import { getIsForbiddenProperty } from "./utils/security";
-
-const MAYBE_ESCAPED_TYPE_KEY_REGEXP = /^~*\$\$/;
-
-function maybeEscapeTypeWrapper(input: unknown) {
-  if (!getIsRecord(input)) return input;
-
-  const entries = Object.entries(input);
-
-  if (entries.length !== 1) return input;
-
-  const [key, value] = entries[0];
-
-  if (!MAYBE_ESCAPED_TYPE_KEY_REGEXP.test(key)) {
-    return input;
-  }
-
-  return {
-    [`~${key}`]: value,
-  };
-}
+import { EncodeContext } from "./EncodeContext";
 
 export function encodeInput(
   input: unknown,
-  circularRefsManager: CircularRefsManager,
+  encodeContext: EncodeContext,
   coder: Coder,
-  path: string
+  path: JSONPointer
 ): JSONValue {
   if (getIsJSONPrimitive(input)) {
     return input;
@@ -52,8 +28,7 @@ export function encodeInput(
 
   if (getIsObject(input)) {
     // See if this object was already present before at some other path
-    const alreadySeenAtPath =
-      circularRefsManager.getAlreadySeenObjectPath(input);
+    const alreadySeenAtPath = encodeContext.getAlreadySeenObjectPath(input);
 
     if (alreadySeenAtPath !== null) {
       // If so, instead of continuing - return an alias to the already seen object
@@ -65,7 +40,7 @@ export function encodeInput(
     /**
      * It is seen for the first time, register it so if it is seen again - we can return an alias to the already seen object
      */
-    circularRefsManager.registerNewSeenObject(input, path);
+    encodeContext.registerNewSeenObject(input, path);
   }
 
   // Its either a record or an array
@@ -73,7 +48,7 @@ export function encodeInput(
     const result: any = Array.isArray(input) ? [] : {};
 
     for (let [key, value] of iterateNestedJSON(input)) {
-      key = sanitizePathSegment(key);
+      // key = sanitizePathSegment(key);
 
       /**
        * We are setting properties on the result object, so we need to skip forbidden properties
@@ -85,9 +60,9 @@ export function encodeInput(
 
       result[key] = encodeInput(
         value,
-        circularRefsManager,
+        encodeContext,
         coder,
-        addPathSegment(path, key)
+        path.addSegment(key)
       );
     }
 
@@ -112,10 +87,10 @@ export function encodeInput(
      */
     wrapper[matchingType.wrapperKey] = encodeInput(
       wrapper[matchingType.wrapperKey],
-      circularRefsManager,
+      encodeContext,
       coder,
       // As object is wrapped in eg. { $$set: [1, 2, 3] }, we need to add the path segment
-      addPathSegment(path, matchingType.wrapperKey)
+      path.addSegment(matchingType.wrapperKey)
     );
 
     return wrapper;

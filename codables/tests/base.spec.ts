@@ -1,6 +1,7 @@
 import { Coder, coder } from "../Coder";
 
 import { JSONValue } from "../types";
+import { captureWarnings } from "./testUtils";
 
 function createUInt8Array(length: number) {
   const array = new Uint8Array(length);
@@ -257,27 +258,27 @@ describe("isDefault", () => {
 
 describe("dots in paths", () => {
   it("should properly encode and decode paths with dots", () => {
-    const foo = { "foo.bar": "baz" };
+    const foo = { "foo/bar": "baz" };
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual({ "foo\\.bar": "baz" });
-    expect(coder.decode({ "foo\\.bar": "baz" })).toEqual(foo);
+    expect(encoded).toEqual({ "foo/bar": "baz" });
+    expect(coder.decode({ "foo/bar": "baz" })).toEqual(foo);
   });
 
   it("should properly encode and decode paths with dots in nested objects", () => {
-    const foo = { "foo.bar": { "baz.qux": "quux" } };
+    const foo = { "foo/bar": { "baz/qux": "quux" } };
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual({ "foo\\.bar": { "baz\\.qux": "quux" } });
-    expect(coder.decode({ "foo\\.bar": { "baz\\.qux": "quux" } })).toEqual(foo);
+    expect(encoded).toEqual({ "foo/bar": { "baz/qux": "quux" } });
+    expect(coder.decode({ "foo/bar": { "baz/qux": "quux" } })).toEqual(foo);
   });
 
   it("works if path contains explicit \\", () => {
-    const foo = { "foo\\bar": "baz" };
+    const foo = { "foo/bar": "baz" };
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual({ "foo\\bar": "baz" });
-    expect(coder.decode({ "foo\\bar": "baz" })).toEqual(foo);
+    expect(encoded).toEqual({ "foo/bar": "baz" });
+    expect(coder.decode({ "foo/bar": "baz" })).toEqual(foo);
   });
 });
 
@@ -457,5 +458,22 @@ describe("format collisions", () => {
     }
 
     expect(current).toEqual(input);
+  });
+});
+
+
+describe("uncodable turns into null", () => {
+  it("should turn into null", () => {
+    using _ = captureWarnings();
+
+    class UnknownClass {
+      constructor(public name: string) {}
+    }
+
+    const encoded = coder.encode({foo: new UnknownClass("foo")});
+    
+    expect(encoded).toEqual({foo: null});
+
+    expect(console.warn).toHaveBeenCalledWith("Not able to encode - no matching type found", new UnknownClass("foo"));
   });
 });
