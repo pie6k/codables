@@ -16,11 +16,11 @@ function resolveRefAlias<T>(
 ): T {
   narrowType<RefAlias>(input);
 
-  const source = context.resolveRefAlias(input[1]);
+  const source = context.resolveRefAlias(input.$$ref);
 
   if (!source) {
     console.warn(
-      `Reference could not be resolved while decoding (${input[1]}) at ${currentPath}`,
+      `Reference could not be resolved while decoding (${input.$$ref}) at ${currentPath}`,
     );
     /**
      * TODO: Assumption here is that data is always encoded and decoded in the same order,
@@ -42,7 +42,9 @@ function resolveTypeTag<T>(
   coder: Coder,
   path: string,
 ): T {
-  const typeName = input[0].slice(2); // eg "$$set" -> "set"
+  const key = Object.keys(input)[0] as keyof typeof input;
+
+  const typeName = key.slice(2); // eg "$$set" -> "set"
 
   const matchingType = coder.getTypeByName(typeName);
 
@@ -50,7 +52,7 @@ function resolveTypeTag<T>(
     console.warn(
       `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`,
     );
-    return input[1] as T;
+    return input[key] as T;
   }
 
   /**
@@ -58,10 +60,10 @@ function resolveTypeTag<T>(
    * needs to be decoded first.
    */
   const decodedTypeInput = decodeInput(
-    input[1],
+    input[key],
     context,
     coder,
-    addPathSegment(path, 1),
+    addPathSegment(path, key),
   );
 
   return matchingType.decode(decodedTypeInput) as T;
@@ -122,7 +124,10 @@ function decodeRecord<T>(
 }
 
 function unescapeTag(input: Tag) {
-  return [`${input[0].slice(1)}`, input[1]] as Tag<JSONValue>;
+  const key = Object.keys(input)[0];
+  return {
+    [key.slice(1)]: input[key as keyof typeof input],
+  };
 }
 
 export function decodeInput<T>(
@@ -136,7 +141,7 @@ export function decodeInput<T>(
   switch (decodableTypeOf) {
     case "escaped-tag": {
       input = unescapeTag(input as Tag) as Tag<JSONValue>;
-      decodableTypeOf = "array"; // Even tho it will look now like a tag, we want it to be treated as an array and not parsed as a custom type
+      decodableTypeOf = "record"; // Even tho it will look now like a tag, we want it to be treated as an array and not parsed as a custom type
     }
     case "primitive": {
       return input as T;

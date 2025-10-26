@@ -19,7 +19,7 @@ function getShouldEscapeKey(key: string) {
   return /^~*\$\$/.test(key);
 }
 
-function getShouldEscapeMaybeTag(input: any[]): boolean {
+function getShouldEscapeMaybeTag(input: Record<string, any>): boolean {
   return (
     input.length === 2 &&
     typeof input[0] === "string" &&
@@ -39,13 +39,13 @@ export function encodeInput(
     case "primitive":
       return input as JSONPrimitive;
     case "special-number":
-      return $$num.encode(input as number);
+      return $$num.encodeTag(input as number);
     case "symbol":
-      return $$symbol.encode(input as symbol);
+      return $$symbol.encodeTag(input as symbol);
     case "bigint":
-      return $$bigInt.encode(input as bigint);
+      return $$bigInt.encodeTag(input as bigint);
     case "undefined":
-      return $$undefined.encode(input as undefined);
+      return $$undefined.encodeTag(input as undefined);
     case "function":
       return null;
   }
@@ -79,40 +79,21 @@ export function encodeInput(
      *
      * `$$set` tells what type it is, and `[1, 2, 3]` is the data needed to decode it later
      */
-    const wrapper = matchingType.encode(input);
 
-    /**
-     * It is almost ready, but it is possible that that the data contains some nested data that
-     * also needs to be encoded.
-     *
-     * Let's replace the data with the encoded data.
-     */
-    wrapper[1] = encodeInput(
-      wrapper[1],
-      encodeContext,
-      coder,
-      // As object is wrapped in eg. { $$set: [1, 2, 3] }, we need to add the path segment
-      addPathSegment(path, 1),
-    );
+    const tagKey = matchingType.tagKey;
 
-    return wrapper;
+    return {
+      [tagKey]: encodeInput(
+        matchingType.encode(input),
+        encodeContext,
+        coder,
+        addPathSegment(path, tagKey),
+      ),
+    };
   }
 
   if (codableTypeOf === "array") {
     narrowType<any[]>(input);
-
-    /**
-     * Quite edge case:
-     * Data that collides with our internal format was explicitly provided.
-     * We need to escape it, or otherwise this data would be decoded as a custom type later
-     *
-     * Will turn eg { $$set: [1, 2, 3] } into { "~$$set": [1, 2, 3] }
-     */
-    if (getShouldEscapeMaybeTag(input)) {
-      input = [`~${input[0]}`, input[1]] as object;
-
-      narrowType<any[]>(input);
-    }
 
     const result: any[] = [];
 
@@ -129,8 +110,22 @@ export function encodeInput(
   }
 
   // Record
-
   const keys = Object.keys(input);
+
+  /**
+   * Quite edge case:
+   * Data that collides with our internal format was explicitly provided.
+   * We need to escape it, or otherwise this data would be decoded as a custom type later
+   *
+   * Will turn eg { $$set: [1, 2, 3] } into { "~$$set": [1, 2, 3] }
+   */
+
+  if (keys.length === 1 && getShouldEscapeKey(keys[0])) {
+    input = { [`~${keys[0]}`]: input[keys[0] as keyof typeof input] };
+    keys[0] = `~${keys[0]}`;
+
+    narrowType<Record<string, any>>(input);
+  }
 
   const result = {} as Record<string, any>;
 

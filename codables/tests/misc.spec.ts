@@ -7,13 +7,12 @@ describe("escaped type keys", () => {
 
 describe("DecodeContext", () => {
   it("works with refs inside custom types", () => {
-    const context = new DecodeContext([
-      "$$map",
-      [
+    const context = new DecodeContext({
+      $$map: [
         ["foo", { foo: "foo" }],
-        ["bar", ["$$ref", "/$$map/0/1"]],
+        ["bar", { $$ref: "/$$map/0/1" }],
       ],
-    ]);
+    });
 
     expect(context.hasCustomTypes).toBe(true);
     expect(context.hasRefAliases).toBe(true);
@@ -22,7 +21,7 @@ describe("DecodeContext", () => {
   });
 
   it("works with custom types, but no refs", () => {
-    const context = new DecodeContext(["$$map", [["foo", { foo: "foo" }]]]);
+    const context = new DecodeContext({ $$map: [["foo", { foo: "foo" }]] });
 
     expect(context.hasCustomTypes).toBe(true);
     expect(context.hasRefAliases).toBe(false);

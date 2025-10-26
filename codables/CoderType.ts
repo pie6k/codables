@@ -7,11 +7,10 @@ interface CoderTypeDefinition<Item, Data> {
   decode: (data: Data) => Item;
 }
 
-export function createTag<Name extends string, Data>(
-  name: Name,
-  data: Data,
-): Tag<Data, Name> {
-  return [`$$${name}`, data];
+export function createTag<Name extends string, Data>(name: Name, data: Data) {
+  return {
+    [`$$${name}`]: data,
+  } as Tag<Data, Name>;
 }
 
 export class CoderType<Item = any, Data = any> {
@@ -33,7 +32,11 @@ export class CoderType<Item = any, Data = any> {
     return this.definition.decode;
   }
 
-  encode(value: Item): Tag<Data, typeof this.name> {
+  encode(value: Item): Data {
+    return this.encoder(value);
+  }
+
+  encodeTag(value: Item): Tag<Data, typeof this.name> {
     return createTag(this.name, this.encoder(value));
   }
 

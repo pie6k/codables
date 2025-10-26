@@ -1,5 +1,5 @@
 import { JSONArray, JSONObject, JSONValue } from "./types";
-import { RefAlias, Tag } from "./format";
+import { RefAlias, Tag, getTagValue } from "./format";
 
 import { getDecodableTypeOf } from "./utils/typeof";
 import { narrowType } from "./utils/assert";
@@ -10,13 +10,13 @@ export function analyzeEncodedData(data: JSONValue, context: DecodeContext) {
       return;
     case "ref-tag":
       narrowType<RefAlias>(data);
-      context.presentRefAliases.add(data[1]);
+      context.presentRefAliases.add(data.$$ref);
       return;
     case "type-tag":
       narrowType<Tag<JSONValue>>(data);
       context.hasCustomTypes = true;
 
-      analyzeEncodedData(data[1], context);
+      analyzeEncodedData(getTagValue(data), context);
       return;
     case "array":
       narrowType<JSONArray>(data);
@@ -34,7 +34,7 @@ export function analyzeEncodedData(data: JSONValue, context: DecodeContext) {
       narrowType<Tag<JSONValue>>(data);
       context.hasEscapedTags = true;
 
-      analyzeEncodedData(data[1], context);
+      analyzeEncodedData(getTagValue(data), context);
       return;
   }
 }

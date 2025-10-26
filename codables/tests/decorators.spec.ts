@@ -20,15 +20,11 @@ describe("decorators", () => {
 
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual([
-      "$$Foo",
-      {
-        foo: "foo",
-        bar: ["$$set", ["bar"]],
-      },
-    ]);
+    expect(encoded).toEqual({ $$Foo: { foo: "foo", bar: { $$set: ["bar"] } } });
 
-    const decoded = coder.decode(encoded);
+    const decoded = coder.decode({
+      $$Foo: { foo: "foo", bar: { $$set: ["bar"] } },
+    });
 
     expect(decoded).toEqual(foo);
   });
@@ -58,16 +54,13 @@ describe("decorators", () => {
     foo.qux = new Set(["qux"]);
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual([
-      "$$Foo",
-      {
-        foo: "foo",
-        baz: "baz",
-        qux: ["$$set", ["qux"]],
-      },
-    ]);
+    expect(encoded).toEqual({
+      $$Foo: { foo: "foo", baz: "baz", qux: { $$set: ["qux"] } },
+    });
 
-    const decoded = coder.decode<Foo>(encoded);
+    const decoded = coder.decode<Foo>({
+      $$Foo: { foo: "foo", baz: "baz", qux: { $$set: ["qux"] } },
+    });
 
     expect(decoded).not.toEqual(foo);
     expect(decoded.foo).toEqual("foo");
@@ -99,15 +92,9 @@ describe("decorators", () => {
 
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual([
-      "$$Foo",
-      {
-        a: "a",
-        aa: "aa",
-      },
-    ]);
+    expect(encoded).toEqual({ $$Foo: { a: "a", aa: "aa" } });
 
-    const decoded = coder.decode<Foo>(encoded);
+    const decoded = coder.decode<Foo>({ $$Foo: { a: "a", aa: "aa" } });
 
     expect(decoded).toEqual(foo);
   });

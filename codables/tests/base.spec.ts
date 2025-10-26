@@ -33,32 +33,30 @@ describe("basic", () => {
   // });
 
   it("should encode and decode back properly all basic types", () => {
-    expectSerializeAndDeserialize(new Date("2025-01-01T00:00:00.000Z"), [
-      "$$date",
-      "2025-01-01T00:00:00.000Z",
-    ]);
-    expectSerializeAndDeserialize(new Date("invalid"), ["$$date", null]);
-    expectSerializeAndDeserialize(Infinity, ["$$num", "Infinity"]);
-    expectSerializeAndDeserialize(-Infinity, ["$$num", "-Infinity"]);
+    expectSerializeAndDeserialize(new Date("2025-01-01T00:00:00.000Z"), {
+      $$date: "2025-01-01T00:00:00.000Z",
+    });
+    expectSerializeAndDeserialize(new Date("invalid"), { $$date: null });
+    expectSerializeAndDeserialize(Infinity, { $$num: "Infinity" });
+    expectSerializeAndDeserialize(-Infinity, { $$num: "-Infinity" });
     expectSerializeAndDeserialize(0.5);
-    expectSerializeAndDeserialize(123n, ["$$bigInt", "123"]);
-    expectSerializeAndDeserialize(BigInt(123), ["$$bigInt", "123"]);
-    expectSerializeAndDeserialize(Symbol.for("foo"), ["$$symbol", "foo"]);
-    expectSerializeAndDeserialize(Symbol("foo"), ["$$symbol", "foo"]);
+    expectSerializeAndDeserialize(123n, { $$bigInt: "123" });
+    expectSerializeAndDeserialize(BigInt(123), { $$bigInt: "123" });
+    expectSerializeAndDeserialize(Symbol.for("foo"), { $$symbol: "foo" });
+    expectSerializeAndDeserialize(Symbol("foo"), { $$symbol: "foo" });
     expectSerializeAndDeserialize(
       { foo: undefined },
-      { foo: ["$$undefined", null] },
+      { foo: { $$undefined: null } },
     );
     expectSerializeAndDeserialize({
       a: new Int8Array([1, 2]),
       b: new Uint8ClampedArray(3),
     });
-    expectSerializeAndDeserialize(undefined, ["$$undefined", null]);
+    expectSerializeAndDeserialize(undefined, { $$undefined: null });
     expectSerializeAndDeserialize(null, null);
-    expectSerializeAndDeserialize(new URL("https://example.com/"), [
-      "$$url",
-      "https://example.com/",
-    ]);
+    expectSerializeAndDeserialize(new URL("https://example.com/"), {
+      $$url: "https://example.com/",
+    });
 
     expectSerializeAndDeserialize({
       a: ["/'a'[0]: string that becomes a regex/"],
@@ -67,13 +65,13 @@ describe("basic", () => {
       "b\\": [/'b\\'[0]: regex that becomes a string/],
     });
 
-    expectSerializeAndDeserialize(-0, ["$$num", "-0"]);
+    expectSerializeAndDeserialize(-0, { $$num: "-0" });
   });
 
   it("should encode nested objects", () => {
     expectSerializeAndDeserialize(
       new Set([new Date("2025-01-01T00:00:00.000Z")]),
-      ["$$set", [["$$date", "2025-01-01T00:00:00.000Z"]]],
+      { $$set: [{ $$date: "2025-01-01T00:00:00.000Z" }] },
     );
   });
 });
@@ -93,8 +91,8 @@ describe("custom types", () => {
       (name) => new Foo(name),
     );
 
-    expect(coder.encode(new Foo("bar"))).toEqual(["$$Foo", "bar"]);
-    expect(coder.decode(["$$Foo", "bar"])).toEqual(new Foo("bar"));
+    expect(coder.encode(new Foo("bar"))).toEqual({ $$Foo: "bar" });
+    expect(coder.decode({ $$Foo: "bar" })).toEqual(new Foo("bar"));
   });
 
   it("custom types can have nested custom objects", () => {
@@ -113,12 +111,13 @@ describe("custom types", () => {
 
     expect(
       coder.encode(new User(new Set([new Date("2025-01-01T00:00:00.000Z")]))),
-    ).toEqual(["$$User", ["$$set", [["$$date", "2025-01-01T00:00:00.000Z"]]]]);
+    ).toEqual({
+      $$User: { $$set: [{ $$date: "2025-01-01T00:00:00.000Z" }] },
+    });
     expect(
-      coder.decode([
-        "$$User",
-        ["$$set", [["$$date", "2025-01-01T00:00:00.000Z"]]],
-      ]),
+      coder.decode({
+        $$User: { $$set: [{ $$date: "2025-01-01T00:00:00.000Z" }] },
+      }),
     ).toEqual(new User(new Set([new Date("2025-01-01T00:00:00.000Z")])));
   });
 });
@@ -200,9 +199,9 @@ describe("stringify/parse", () => {
       (name) => new Foo(name),
     );
     expect(coder.stringify(new Foo("bar"))).toEqual(
-      JSON.stringify(["$$Foo", "bar"]),
+      JSON.stringify({ $$Foo: "bar" }),
     );
-    expect(coder.parse(JSON.stringify(["$$Foo", "bar"]))).toEqual(
+    expect(coder.parse(JSON.stringify({ $$Foo: "bar" }))).toEqual(
       new Foo("bar"),
     );
   });
@@ -262,10 +261,7 @@ describe("symbols", () => {
     const symbol = Symbol("foo");
     const input = [symbol, symbol];
     const encoded = coder.encode(input);
-    expect(encoded).toEqual([
-      ["$$symbol", "foo"],
-      ["$$symbol", "foo"],
-    ]);
+    expect(encoded).toEqual([{ $$symbol: "foo" }, { $$symbol: "foo" }]);
 
     const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
@@ -287,7 +283,7 @@ describe("symbols", () => {
   it("should work with symbols created with .for", () => {
     const fooSymbol = Symbol.for("createdbefore");
 
-    const decoded = coder.decode<any>(["$$symbol", "createdbefore"]);
+    const decoded = coder.decode<any>({ $$symbol: "createdbefore" });
 
     expect(fooSymbol).toBe(Symbol.for("createdbefore"));
     expect(decoded).toBe(fooSymbol);
@@ -296,29 +292,19 @@ describe("symbols", () => {
 
 describe("coding errors", () => {
   it("should encode and decode errors", () => {
-    expectSerializeAndDeserialize(new Error("foo"), ["$$error", "foo"]);
+    expectSerializeAndDeserialize(new Error("foo"), { $$error: "foo" });
 
     expectSerializeAndDeserialize(
       new Error("foo", { cause: new Error("bar") }),
-      [
-        "$$error",
-        {
-          message: "foo",
-          cause: ["$$error", "bar"],
-        },
-      ],
+      { $$error: { message: "foo", cause: { $$error: "bar" } } },
     );
 
     const error = new Error("named");
     error.name = "CustomError";
 
-    expectSerializeAndDeserialize(error, [
-      "$$error",
-      {
-        message: "named",
-        name: "CustomError",
-      },
-    ]);
+    expectSerializeAndDeserialize(error, {
+      $$error: { message: "named", name: "CustomError" },
+    });
   });
 });
 
@@ -341,13 +327,12 @@ describe("map with regex keys", () => {
 
     const encoded = coder.encode(input);
 
-    expect(encoded).toEqual([
-      "$$map",
-      [
-        [["$$regexp", "foo"], "foo"],
-        [["$$regexp", "foo"], "foo"],
+    expect(encoded).toEqual({
+      $$map: [
+        [{ $$regexp: "foo" }, "foo"],
+        [{ $$regexp: "foo" }, "foo"],
       ],
-    ]);
+    });
 
     const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
@@ -360,13 +345,9 @@ describe("custom errors", () => {
     // @ts-expect-error
     error.code = "E_FOO";
 
-    expectSerializeAndDeserialize(error, [
-      "$$error",
-      {
-        message: "foo",
-        properties: { code: "E_FOO" },
-      },
-    ]);
+    expectSerializeAndDeserialize(error, {
+      $$error: { message: "foo", properties: { code: "E_FOO" } },
+    });
   });
 
   it("should not include error stack", () => {
@@ -375,10 +356,9 @@ describe("custom errors", () => {
 
     const encoded = coder.encode(input);
 
-    expect(encoded).toEqual([
-      "$$error",
-      "Beep boop, you don't wanna see me. I'm an error!",
-    ]);
+    expect(encoded).toEqual({
+      $$error: "Beep boop, you don't wanna see me. I'm an error!",
+    });
 
     const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
@@ -403,24 +383,24 @@ describe("prototype pollution", () => {
 
 describe("format collisions", () => {
   it("properly encodes and decodes data that collides with internal format", () => {
-    const input = ["$$set", [1, 2, 3]];
+    const input = { $$set: [1, 2, 3] };
 
     const encoded = coder.encode(input);
 
-    expect(encoded).toEqual(["~$$set", [1, 2, 3]]);
+    expect(encoded).toEqual({ "~$$set": [1, 2, 3] });
 
     const decoded = coder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual(input);
-    expect(decoded[1]).toEqual([1, 2, 3]);
+    expect(decoded.$$set).toEqual([1, 2, 3]);
   });
 
   it("handles somehow already escaped type keys", () => {
-    const input = ["~$$set", [1, 2, 3]];
+    const input = { "~$$set": [1, 2, 3] };
 
     const encoded = coder.encode(input);
 
-    expect(encoded).toEqual(["~~$$set", [1, 2, 3]]);
+    expect(encoded).toEqual({ "~~$$set": [1, 2, 3] });
 
     const decoded = coder.decode<typeof input>(encoded);
 
@@ -429,14 +409,14 @@ describe("format collisions", () => {
 
   it("can re-encode n times and then decode back properly", () => {
     const N = 5;
-    const input = ["$$set", [1, 2, 3]];
+    const input = { $$set: [1, 2, 3] };
 
     let current: any = input;
     for (let i = 0; i < N; i++) {
       current = coder.encode(current);
     }
 
-    expect(current).toEqual(["~~~~~$$set", [1, 2, 3]]);
+    expect(current).toEqual({ "~~~~~$$set": [1, 2, 3] });
 
     for (let i = 0; i < N; i++) {
       current = coder.decode(current);

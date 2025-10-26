@@ -64,21 +64,23 @@ export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
 
   if (input === null) return "primitive";
 
-  if (!Array.isArray(input)) return "record";
+  if (Array.isArray(input)) return "array";
 
-  if (input.length !== 2) return "array";
+  const keys = Object.keys(input);
 
-  const key = input[0];
+  if (keys.length !== 1) return "record";
+
+  const key = keys[0];
 
   // It is not matching tag format
-  if (typeof key !== "string" || !ANY_TAG_KEY_REGEXP.test(key)) return "array";
+  if (!ANY_TAG_KEY_REGEXP.test(key)) return "record";
 
   if (key === "$$ref") {
     // Match [$$ref, "path"]
-    if (typeof input[1] === "string") return "ref-tag";
+    if (typeof input.$$ref === "string") return "ref-tag";
 
     // Something else, eg ["$$ref", { foo: "bar" }] - not a tag -> treat as normal array
-    return "array";
+    return "record";
   }
 
   if (key[0] === "~") return "escaped-tag";
