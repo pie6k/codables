@@ -31,21 +31,21 @@ export const $$date = createCoderType(
     if (maybeISOString === null) return new Date("invalid");
 
     return new Date(maybeISOString);
-  }
+  },
 );
 
 export const $$set = createCoderType(
   "set",
   (value) => value instanceof Set,
   (set) => [...set],
-  (array) => new Set(array)
+  (array) => new Set(array),
 );
 
 export const $$map = createCoderType(
   "map",
   (value) => value instanceof Map,
   (map) => [...map.entries()],
-  (entries) => new Map(entries)
+  (entries) => new Map(entries),
 );
 
 export const $$error = createCoderType(
@@ -84,21 +84,21 @@ export const $$error = createCoderType(
     }
 
     return error;
-  }
+  },
 );
 
 export const $$undefined = createCoderType(
   "undefined",
   (value) => value === undefined,
   () => null,
-  () => undefined
+  () => undefined,
 );
 
 export const $$bigInt = createCoderType(
   "bigInt",
   (value) => typeof value === "bigint",
   (bigInt) => bigInt.toString(),
-  (string) => BigInt(string)
+  (string) => BigInt(string),
 );
 
 export const $$regexp = createCoderType(
@@ -117,14 +117,14 @@ export const $$regexp = createCoderType(
 
     const [source, flags] = sourceOrSourceAndFlags;
     return new RegExp(source, flags);
-  }
+  },
 );
 
 export const $$url = createCoderType(
   "url",
   (value) => value instanceof URL,
   (url) => url.toString(),
-  (string) => new URL(string)
+  (string) => new URL(string),
 );
 
 const symbolsRegistry = new Map<string, symbol>();
@@ -139,7 +139,7 @@ export const $$symbol = createCoderType(
 
     return symbolKey;
   },
-  (symbolKey) => symbolsRegistry.get(symbolKey) ?? Symbol.for(symbolKey)
+  (symbolKey) => symbolsRegistry.get(symbolKey) ?? Symbol.for(symbolKey),
 );
 
 export const $$typedArray = createCoderType(
@@ -149,7 +149,7 @@ export const $$typedArray = createCoderType(
     type: getTypedArrayType(value),
     data: [...value],
   }),
-  ({ type, data }) => new (getTypedArrayConstructor(type))(data)
+  ({ type, data }) => new (getTypedArrayConstructor(type))(data),
 );
 
 /**
@@ -161,5 +161,12 @@ export const $$num = createCoderType(
   (value): value is number =>
     typeof value === "number" && !!getSpecialNumberType(value),
   getSpecialNumberType,
-  decodeSpecialNumber
+  decodeSpecialNumber,
+);
+
+export const $$urlSearchParams = createCoderType(
+  "urlSearchParams",
+  (value) => value instanceof URLSearchParams,
+  (urlSearchParams) => urlSearchParams.toString(),
+  (string) => new URLSearchParams(string),
 );

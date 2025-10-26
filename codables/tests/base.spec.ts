@@ -66,6 +66,25 @@ describe("basic", () => {
     });
 
     expectSerializeAndDeserialize(-0, { $$num: "-0" });
+
+    expectSerializeAndDeserialize(new Float64Array([NaN, 0, NaN, 1]), {
+      $$typedArray: {
+        type: "float64",
+        data: [{ $$num: "NaN" }, 0, { $$num: "NaN" }, 1],
+      },
+    });
+
+    expectSerializeAndDeserialize(String("foo"), "foo");
+    expectSerializeAndDeserialize(Number(123), 123);
+    expectSerializeAndDeserialize(Boolean(true), true);
+    expectSerializeAndDeserialize(
+      [0, , , 0],
+      [0, { $$undefined: null }, { $$undefined: null }, 0],
+    );
+
+    expectSerializeAndDeserialize(new URLSearchParams("a=1&b=2"), {
+      $$urlSearchParams: "a=1&b=2",
+    });
   });
 
   it("should encode nested objects", () => {
@@ -426,21 +445,29 @@ describe("format collisions", () => {
   });
 });
 
-describe("uncodable turns into null", () => {
-  it("should turn into null", () => {
-    using _ = captureWarnings();
+describe("uncodable handling", () => {
+  class UnknownClass {
+    constructor(public name: string) {}
+  }
 
-    class UnknownClass {
-      constructor(public name: string) {}
-    }
+  const input = { foo: new UnknownClass("foo") };
+  it("null mode", () => {
+    expect(coder.encode(input, { unknownInputMode: "null" })).toEqual({
+      foo: null,
+    });
+  });
+  it("unchanged mode", () => {
+    const encoded: any = coder.encode(input, {
+      unknownInputMode: "unchanged",
+    });
 
-    const encoded = coder.encode({ foo: new UnknownClass("foo") });
-
-    expect(encoded).toEqual({ foo: null });
-
-    expect(console.warn).toHaveBeenCalledWith(
-      "Not able to encode - no matching type found",
-      new UnknownClass("foo"),
+    expect(encoded.foo).toBe(input.foo);
+  });
+  it("throw mode", () => {
+    expect(() =>
+      coder.encode(input, { unknownInputMode: "throw" }),
+    ).toThrowErrorMatchingInlineSnapshot(
+      `[Error: Not able to encode - no matching type found]`,
     );
   });
 });

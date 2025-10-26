@@ -13,8 +13,13 @@ function testComplexData(sameReferences: boolean) {
     describe("encode", () => {
       const data = generateData({ sameReferences });
       it("codables", () => {
-        const coder = new Coder();
         const encoded = coder.encode(data);
+
+        // console.dir(encoded, { depth: null });
+      });
+
+      it("codables (no preserve references)", () => {
+        const encoded = coder.encode(data, { preserveReferences: false });
 
         // console.dir(encoded, { depth: null });
       });
@@ -53,6 +58,11 @@ describe.runIf(RUN_BENCHMARK)("benchmark", () => {
       const coder = new Coder();
       it("codables", () => {
         const encoded = coder.encode(data);
+        // console.dir(encoded, { depth: null });
+      });
+
+      it("codables (no preserve references)", () => {
+        const encoded = coder.encode(data, { preserveReferences: false });
         // console.dir(encoded, { depth: null });
       });
 

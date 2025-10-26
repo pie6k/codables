@@ -8,36 +8,29 @@ interface CoderTypeDefinition<Item, Data> {
 }
 
 export function createTag<Name extends string, Data>(name: Name, data: Data) {
-  return {
-    [`$$${name}`]: data,
-  } as Tag<Data, Name>;
+  const tag = {} as Tag<Data, Name>;
+
+  tag[`$$${name}`] = data;
+
+  return tag;
 }
 
 export class CoderType<Item = any, Data = any> {
-  constructor(readonly definition: CoderTypeDefinition<Item, Data>) {}
-
-  get name() {
-    return this.definition.name;
+  constructor(readonly definition: CoderTypeDefinition<Item, Data>) {
+    this.name = definition.name;
+    this.tagKey = `$$${this.name}`;
   }
 
-  get tagKey(): TagKey<typeof this.name> {
-    return `$$${this.name}`;
-  }
+  readonly name: string;
 
-  private get encoder() {
-    return this.definition.encode;
-  }
-
-  private get decoder() {
-    return this.definition.decode;
-  }
+  readonly tagKey: TagKey<typeof this.name>;
 
   encode(value: Item): Data {
-    return this.encoder(value);
+    return this.definition.encode(value);
   }
 
   encodeTag(value: Item): Tag<Data, typeof this.name> {
-    return createTag(this.name, this.encoder(value));
+    return createTag(this.name, this.encode(value));
   }
 
   decode(data: Data): Item {

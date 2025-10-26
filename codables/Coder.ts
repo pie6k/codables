@@ -2,10 +2,10 @@ import * as builtinTypesMap from "./builtin";
 
 import { AnyCodableClass, JSONValue } from "./types";
 import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
+import { EncodeContext, EncodeOptions } from "./EncodeContext";
 import { getCodableClassType, getIsCodableClass } from "./codableClass";
 
 import { DecodeContext } from "./DecodeContext";
-import { EncodeContext } from "./EncodeContext";
 import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
@@ -83,8 +83,8 @@ export class Coder {
     return this.registerType(createCoderType(name, canEncode, encode, decode));
   }
 
-  encode<T>(value: T): JSONValue {
-    const encodeContext = new EncodeContext();
+  encode<T>(value: T, options?: EncodeOptions): JSONValue {
+    const encodeContext = new EncodeContext(options);
 
     return encodeInput(value, encodeContext, this, "/");
   }

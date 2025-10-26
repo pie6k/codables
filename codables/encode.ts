@@ -53,25 +53,33 @@ export function encodeInput(
   // Either a record or an array
   narrowType<object>(input);
 
-  // See if this object was already present before at some other path
-  const alreadySeenAtPath = encodeContext.getAlreadySeenObjectPath(input);
+  if (encodeContext.preserveReferences) {
+    // See if this object was already present before at some other path
+    const alreadySeenAtPath = encodeContext.getAlreadySeenObjectPath(input);
 
-  if (alreadySeenAtPath !== null) {
-    // If so, instead of continuing - return an alias to the already seen object
-    return createTag("ref", alreadySeenAtPath);
+    if (alreadySeenAtPath !== null) {
+      // If so, instead of continuing - return an alias to the already seen object
+      return createTag("ref", alreadySeenAtPath);
+    }
+
+    /**
+     * It is seen for the first time, register it so if it is seen again - we can return an alias to the already seen object
+     */
+    encodeContext.registerNewSeenObject(input, path);
   }
-
-  /**
-   * It is seen for the first time, register it so if it is seen again - we can return an alias to the already seen object
-   */
-  encodeContext.registerNewSeenObject(input, path);
 
   if (codableTypeOf === "custom-object") {
     const matchingType = coder.getMatchingTypeFor(input);
 
     if (!matchingType) {
-      console.warn("Not able to encode - no matching type found", input);
-      return null;
+      switch (encodeContext.unknownMode) {
+        case "unchanged":
+          return input as JSONValue;
+        case "null":
+          return null;
+        case "throw":
+          throw new Error("Not able to encode - no matching type found", input);
+      }
     }
 
     /**
@@ -80,16 +88,14 @@ export function encodeInput(
      * `$$set` tells what type it is, and `[1, 2, 3]` is the data needed to decode it later
      */
 
-    const tagKey = matchingType.tagKey;
-
-    return {
-      [tagKey]: encodeInput(
+    return matchingType.createTag(
+      encodeInput(
         matchingType.encode(input),
         encodeContext,
         coder,
-        addPathSegment(path, tagKey),
+        addPathSegment(path, matchingType.tagKey),
       ),
-    };
+    );
   }
 
   if (codableTypeOf === "array") {
@@ -130,7 +136,7 @@ export function encodeInput(
   const result = {} as Record<string, any>;
 
   for (const key of keys) {
-    // key = sanitizePathSegment(key);
+    narrowType<keyof typeof input>(key);
 
     /**
      * We are setting properties on the result object, so we need to skip forbidden properties
@@ -141,7 +147,7 @@ export function encodeInput(
     if (getIsForbiddenProperty(key)) continue;
 
     result[key] = encodeInput(
-      input[key as keyof typeof input],
+      input[key],
       encodeContext,
       coder,
       addPathSegment(path, key),

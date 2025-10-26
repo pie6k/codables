@@ -1,8 +1,14 @@
 import { DecodeContext } from "../DecodeContext";
 import { coder } from "../Coder";
 
-describe("escaped type keys", () => {
-  it("should escape type keys", () => {});
+describe("misc", () => {
+  it("encodes function as null", () => {
+    const foo = () => "foo";
+    const encoded = coder.encode(foo);
+    expect(encoded).toEqual(null);
+    const decoded = coder.decode<typeof foo>(encoded);
+    expect(decoded).toBe(null);
+  });
 });
 
 describe("DecodeContext", () => {
@@ -35,5 +41,16 @@ describe("POJO with symbol key", () => {
     expect(encoded).toEqual({});
     const decoded = coder.decode<typeof foo>(encoded);
     expect(decoded).toEqual({});
+  });
+});
+
+describe("primitive objects", () => {
+  it("String", () => {
+    const input = String("foo");
+    const encoded = coder.encode(input);
+    console.log(encoded);
+    expect(encoded).toEqual("foo");
+    const decoded = coder.decode<typeof input>(encoded);
+    expect(decoded).toEqual(input);
   });
 });

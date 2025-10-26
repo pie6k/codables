@@ -1,5 +1,5 @@
 import { DecodableTypeOf, getDecodableTypeOf } from "./utils/typeof";
-import { JSONArray, JSONObject, JSONValue } from "./types";
+import { JSONArray, JSONValue } from "./types";
 import { RefAlias, Tag, TagKey } from "./format";
 
 import { Coder } from "./Coder";
@@ -14,11 +14,9 @@ function resolveRefAlias<T>(
   context: DecodeContext,
   currentPath: string,
 ): T {
-  narrowType<RefAlias>(input);
+  const referencedObject = context.resolveRefAlias(input.$$ref);
 
-  const source = context.resolveRefAlias(input.$$ref);
-
-  if (!source) {
+  if (!referencedObject) {
     console.warn(
       `Reference could not be resolved while decoding (${input.$$ref}) at ${currentPath}`,
     );
@@ -33,17 +31,17 @@ function resolveRefAlias<T>(
     return null as T;
   }
 
-  return source as T;
+  return referencedObject as T;
 }
 
 function resolveTypeTag<T>(
   tag: Tag<JSONValue>, // eg { $$set: [1, 2, 3] }
-  key: TagKey, // eg "$$set"
+  tagKey: TagKey, // eg "$$set"
   context: DecodeContext,
   coder: Coder,
   path: string,
 ): T {
-  const typeName = key.slice(2); // eg "$$set" -> "set"
+  const typeName = tagKey.slice(2); // eg "$$set" -> "set"
 
   const matchingType = coder.getTypeByName(typeName);
 
@@ -51,7 +49,7 @@ function resolveTypeTag<T>(
     console.warn(
       `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`,
     );
-    return tag[key] as T;
+    return tag[tagKey] as T;
   }
 
   /**
@@ -59,10 +57,10 @@ function resolveTypeTag<T>(
    * needs to be decoded first.
    */
   const decodedTypeInput = decodeInput(
-    tag[key],
+    tag[tagKey],
     context,
     coder,
-    addPathSegment(path, key),
+    addPathSegment(path, tagKey),
   );
 
   return matchingType.decode(decodedTypeInput) as T;
@@ -74,8 +72,6 @@ function decodeArray<T>(
   coder: Coder,
   path: string,
 ): T {
-  narrowType<JSONArray>(input);
-
   const result: any[] = [];
 
   context.registerRef(path, result);
@@ -142,9 +138,11 @@ export function decodeInput<T>(
       input = unescapeTag(input as Tag) as Tag<JSONValue>;
       decodableTypeOf = "record"; // Even tho it will look now like a tag, we want it to be treated as an array and not parsed as a custom type
     }
+
     case "primitive": {
       return input as T;
     }
+
     case "ref-tag": {
       return resolveRefAlias<T>(input as RefAlias, context, path);
     }
@@ -152,6 +150,7 @@ export function decodeInput<T>(
     case "array": {
       return decodeArray<T>(input as any[], context, coder, path);
     }
+
     case "record": {
       return decodeRecord<T>(
         input as Record<string, any>,

@@ -211,3 +211,17 @@ describe("misc", () => {
     expect(decoded[0]).toBe(decoded[1]);
   });
 });
+
+describe("preserve references", () => {
+  it("should not preserve references if preserveReferences is false", () => {
+    const foo = { foo: "foo" };
+    const input = [foo, foo];
+
+    const encoded = coder.encode(input, { preserveReferences: false });
+    expect(encoded).toEqual([{ foo: "foo" }, { foo: "foo" }]);
+
+    const decoded = coder.decode<typeof input>(encoded);
+    expect(decoded).toEqual(input);
+    expect(decoded[0]).not.toBe(decoded[1]);
+  });
+});
