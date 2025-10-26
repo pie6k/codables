@@ -1,4 +1,4 @@
-import { codable, codableClass } from "../codableClass";
+import { codable, codableClass, getCodableMetadata } from "../codableClass";
 
 import { Coder } from "../Coder";
 
@@ -110,7 +110,32 @@ describe("decorators", () => {
   });
 });
 
-describe.todo("inheritance", () => {
+describe("metadata", () => {
+  it("properly sets metadata on the class", () => {
+    @codableClass("Foo")
+    class Foo {
+      @codable()
+      foo!: string;
+    }
+
+    @codableClass("Bar")
+    class Bar extends Foo {
+      @codable()
+      bar!: string;
+    }
+
+    @codableClass("Baz")
+    class Baz extends Bar {
+      baz!: string;
+    }
+
+    expect(getCodableMetadata(Foo)?.name).toBe("Foo");
+    expect(getCodableMetadata(Bar)?.name).toBe("Bar");
+    expect(getCodableMetadata(Baz)?.name).toBe("Baz");
+  });
+});
+
+describe("inheritance", () => {
   it("should encode and decode inherited properties", () => {
     @codableClass("Foo")
     class Foo {

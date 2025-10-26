@@ -7,60 +7,58 @@ import { JSONValue } from "../types";
 import data from "./test-data.json";
 import { generateData } from "./generate";
 
-describe("benchmark", () => {
-  describe("encode", () => {
-    const coder = new Coder();
-    it("codables", () => {
-      const encoded = coder.encode(data);
+const RUN_BENCHMARK = false;
+
+describe.runIf(RUN_BENCHMARK)("benchmark", () => {
+  if (!RUN_BENCHMARK) return;
+
+  describe("plain json", () => {
+    describe("encode", () => {
+      const coder = new Coder();
+      it("codables", () => {
+        const encoded = coder.encode(data);
+      });
+
+      it("superjson", () => {
+        const encoded = serialize(data);
+      });
+
+      it("json", () => {
+        const encoded = JSON.stringify(data);
+      });
+
+      it("clone", () => {
+        const encoded = jsonBaselineClone(data as JSONValue);
+      });
     });
 
-    it("superjson", () => {
-      const encoded = serialize(data);
+    describe("decode", () => {
+      const coder = new Coder();
+      const coderEncoded = coder.encode(data);
+      const superjsonEncoded = serialize(data);
+      it("codables", () => {
+        const decoded = coder.decode(coderEncoded);
+      });
+
+      it("superjson", () => {
+        const decoded = deserialize(superjsonEncoded);
+      });
     });
-  });
 
-  describe("decode", () => {
-    const coder = new Coder();
-    const coderEncoded = coder.encode(data);
-    const superjsonEncoded = serialize(data);
-    it("codables", () => {
-      const decoded = coder.decode(coderEncoded);
-    });
+    describe("cycle", () => {
+      it("codables", () => {
+        const encoded = coder.encode(data);
+        const decoded = coder.decode(encoded);
+      });
 
-    it("superjson", () => {
-      const decoded = deserialize(superjsonEncoded);
-    });
-  });
-
-  it("json", () => {
-    const encoded = JSON.stringify(data);
-    const decoded = JSON.parse(encoded);
-    // expect(decoded).toEqual(data);
-  });
-
-  it("baseline", () => {
-    const encoded = jsonBaselineClone(data as JSONValue);
-    // const decoded = JSON.parse(encoded);
-    // expect(decoded).toEqual(data);
-  });
-
-  it("baseline traverse", () => {
-    jsonBaselineTraverse(data as JSONValue);
-  });
-
-  it("iterate JSON", () => {
-    for (const item of iterateJSON(data as JSONValue)) {
-      // console.log(item);
-    }
-  });
-
-  it("iterate JSON with callback", () => {
-    iterateJSONWithCallback(data as JSONValue, (item) => {
-      // console.log(item);
+      it("superjson", () => {
+        const encoded = serialize(data);
+        const decoded = deserialize(encoded);
+      });
     });
   });
 
-  describe("complex", () => {
+  describe("complex data", () => {
     describe("encode", () => {
       const data = generateData();
       it("codables", () => {
@@ -89,6 +87,20 @@ describe("benchmark", () => {
       it("superjson", () => {
         const decoded = deserialize(superjsonEncoded);
         // expect(decoded).toEqual(data);
+      });
+    });
+
+    describe("cycle", () => {
+      const data = generateData();
+      it("codables", () => {
+        const coder = new Coder();
+        const encoded = coder.encode(data);
+        const decoded = coder.decode(encoded);
+      });
+
+      it("superjson", () => {
+        const encoded = serialize(data);
+        const decoded = deserialize(encoded);
       });
     });
   });

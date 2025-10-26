@@ -37,7 +37,7 @@ export function jsonBaselineClone(
     return { $$ref: maybePath };
   }
 
-  seenMap.set(json, path);
+  // seenMap.set(json, path);
 
   // seenMap.set(json, path);
 

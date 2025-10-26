@@ -40,7 +40,7 @@ export class Coder {
     }
   }
 
-  registerClass(...classes: Array<AnyCodableClass<any>>) {
+  registerClass(...classes: AnyCodableClass<any>[]) {
     if (this.isDefault) {
       throw new Error(
         "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance."
@@ -58,9 +58,7 @@ export class Coder {
     }
   }
 
-  register(
-    ...typesOrClasses: Array<AnyCodableClass<any> | CoderType<any, any>>
-  ) {
+  register(...typesOrClasses: (AnyCodableClass<any> | CoderType<any, any>)[]) {
     for (const typeOrClass of typesOrClasses) {
       if (typeOrClass instanceof CoderType) {
         this.registerType(typeOrClass);

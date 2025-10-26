@@ -9,6 +9,16 @@ import { unsafeAssertType } from "./utils/assert";
 import { getIsForbiddenProperty } from "./utils/security";
 import { getCodableTypeOf } from "./utils/typeof";
 
+/**
+ * It is either our tag with $$ or already escaped tag (~$$) which we will escape further.
+ * This is very rare case:
+ * - someone encoded data that already looks like our internal format
+ * - someone encoded data, and then encoded encoded data again instead of decoding it
+ */
+function getShouldEscapeKey(key: string) {
+  return /^~*\$\$/.test(key);
+}
+
 export function encodeInput(
   input: unknown,
   encodeContext: EncodeContext,
@@ -91,7 +101,8 @@ export function encodeInput(
    *
    * Will turn eg { $$set: [1, 2, 3] } into { "~$$set": [1, 2, 3] }
    */
-  if (entries.length === 1 && /^~*\$\$/.test(entries[0][0])) {
+  if (entries.length === 1 && getShouldEscapeKey(entries[0][0])) {
+    // Escape the key
     entries[0][0] = `~${entries[0][0]}`;
   }
 

@@ -1,13 +1,15 @@
 import { AnyCodableClass, AutoCodableClass } from "./types";
 import { CoderType, createCoderType } from "./CoderType";
 
+import { PrivateMetadata } from "./utils/metadata";
 import { Thunk } from "./utils/misc";
-import { assertGet } from "./utils/assert";
 import { detectCodableProperties } from "./utils/properties";
 
 type WithMetadata<T> = T & { [Symbol.metadata]?: DecoratorMetadata };
 
-const CODABLE_METADATA = Symbol.for("CODABLE_METADATA");
+const metadata = new PrivateMetadata<CodableClassMetadata>(() => ({
+  fields: new Map(),
+}));
 
 type CodableFieldsMap = Map<string, any>;
 interface CodableClassMetadata {
@@ -16,45 +18,22 @@ interface CodableClassMetadata {
   type?: CoderType<any, any>;
 }
 
-if (!Symbol.metadata) {
-  Reflect.set(Symbol, "metadata", Symbol.for("Symbol.metadata"));
-}
-
-function getMetadata<T extends object>(Class: T): DecoratorMetadata | null {
-  return (Class as WithMetadata<T>)[Symbol.metadata] ?? null;
-}
-
-function initCodableMetadata(metadata: DecoratorMetadata) {
-  if (metadata[CODABLE_METADATA])
-    return metadata[CODABLE_METADATA] as CodableClassMetadata;
-
-  metadata[CODABLE_METADATA] = {
-    name: undefined,
-    fields: new Map(),
-    type: undefined,
-  };
-
-  return metadata[CODABLE_METADATA] as CodableClassMetadata;
-}
-
-function getCodableMetadata<T extends object>(
+export function getCodableMetadata<T extends object>(
   Class: T
 ): CodableClassMetadata | null {
-  const codableMetadata = getMetadata(Class)?.[CODABLE_METADATA] ?? null;
-
-  return codableMetadata as CodableClassMetadata | null;
+  return metadata.getFor(Class);
 }
 
 export function getIsCodableClass<T extends AnyCodableClass<any>>(
   Class: T
 ): boolean {
-  return getCodableMetadata(Class) !== null;
+  return metadata.isInitialized(Class);
 }
 
 export function getCodableClassType<T extends AnyCodableClass<any>>(
   Class: T
 ): CoderType<any, any> | null {
-  return getCodableMetadata(Class)?.type ?? null;
+  return metadata.getFor(Class).type ?? null;
 }
 
 function serializeCodableClass<T extends object>(
@@ -101,7 +80,7 @@ function createCodableClassType<T extends AnyCodableClass<any>>(
   fields: CodableFieldsMap
 ): CoderType<any, any> {
   return createCoderType(
-    Class.name,
+    name,
     (value): value is T => value instanceof Class,
     (value) => serializeCodableClass(value, fields),
     (value) => deserializeCodableClass(Class as AutoCodableClass<any>, value)
@@ -117,7 +96,7 @@ export function codableClass<T extends AnyCodableClass<any>>(
   options?: CodableClassOptions<T>
 ) {
   return (Class: T, context: ClassDecoratorContext<T>) => {
-    const codableMetadata = initCodableMetadata(context.metadata);
+    const codableMetadata = metadata.init(context.metadata);
 
     codableMetadata.name = name;
     codableMetadata.type = createCodableClassType(
@@ -142,7 +121,7 @@ export function codable<T, V>() {
     if (isSymbolName)
       throw new Error("Symbol property names are not supported");
 
-    const codableMetadata = initCodableMetadata(context.metadata);
+    const codableMetadata = metadata.init(context.metadata);
 
     codableMetadata.fields.set(context.name, initialValue);
   };
