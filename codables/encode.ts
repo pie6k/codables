@@ -128,6 +128,8 @@ export function encodeInput(
     return result;
   }
 
+  // Record
+
   const keys = Object.keys(input);
 
   const result = {} as Record<string, any>;

@@ -3,42 +3,49 @@ const RANDOM_THINGS = [
   () => new Set([1, 2, 3]),
   () => new Map([["foo", "bar"]]),
   () => new Set([new Date(), new Date(), new Date()]),
+  () => [new Set([1, 2, 3])],
 ];
 
 const REFERENCED_THINGS = [new Map([["ref", "ref"]])];
 
-function getRandomThing(i: number) {
-  if (i === 15) return REFERENCED_THINGS[0];
+function getRandomThing(i: number, sameReferences: boolean) {
+  if (i === 15 && sameReferences) return REFERENCED_THINGS[0];
 
   return RANDOM_THINGS[i % RANDOM_THINGS.length]();
 }
 
-export function generateData() {
+interface GenerateDataOptions {
+  sameReferences?: boolean;
+}
+
+export function generateData(options: GenerateDataOptions = {}) {
+  const { sameReferences = false } = options;
+
   const data = [];
   for (let i = 0; i < 100; i++) {
     let nested1 = [];
     let nested2 = [];
     for (let j = 0; j < 10; j++) {
       nested1[j] = {
-        createdAt: getRandomThing(i + j),
-        updatedAt: getRandomThing(i + j + 1),
+        createdAt: getRandomThing(i + j, sameReferences),
+        updatedAt: getRandomThing(i + j + 1, sameReferences),
         innerNested: {
-          createdAt: getRandomThing(i + j + 2),
-          updatedAt: getRandomThing(i + j + 3),
+          createdAt: getRandomThing(i + j + 2, sameReferences),
+          updatedAt: getRandomThing(i + j + 3, sameReferences),
         },
       };
       nested2[j] = {
-        createdAt: getRandomThing(i + j + 4),
-        updatedAt: getRandomThing(i + j + 5),
+        createdAt: getRandomThing(i + j + 4, sameReferences),
+        updatedAt: getRandomThing(i + j + 5, sameReferences),
         innerNested: {
-          createdAt: getRandomThing(i + j + 6),
-          updatedAt: getRandomThing(i + j + 7),
+          createdAt: getRandomThing(i + j + 6, sameReferences),
+          updatedAt: getRandomThing(i + j + 7, sameReferences),
         },
       };
     }
     const object = {
-      createdAt: getRandomThing(i + 8),
-      updatedAt: getRandomThing(i + 9),
+      createdAt: getRandomThing(i + 8, sameReferences),
+      updatedAt: getRandomThing(i + 9, sameReferences),
       nested1,
       nested2,
     };

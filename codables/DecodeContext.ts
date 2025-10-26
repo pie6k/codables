@@ -50,24 +50,27 @@ export class DecodeContext {
 
   readonly hasRefAliases: boolean;
 
+  /**
+   * No custom types, no ref aliases, no escaped tags. Encoded data is regular JSON-compatible.
+   */
   get isPlainJSON(): boolean {
     return !this.hasEscapedTags && !this.hasCustomTypes && !this.hasRefAliases;
   }
 
+  /**
+   * Some object needed by some alias (list prepared before) is ready to be used.
+   */
   registerRef(path: string, object: object) {
     if (!this.hasRefAliases || !this.presentRefAliases.has(path)) return;
 
     this.resolvedRefs.set(path, object);
   }
 
+  /**
+   * Alias requested value it referenced
+   */
   resolveRefAlias(path: string) {
     return this.resolvedRefs.get(path) ?? null;
-  }
-
-  getIsAliasPresent(path: string) {
-    if (!this.hasRefAliases) return false;
-
-    return this.presentRefAliases.has(path);
   }
 
   constructor(data: JSONValue) {

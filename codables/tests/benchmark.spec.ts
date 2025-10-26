@@ -8,71 +8,24 @@ import { generateData } from "./generate";
 
 const RUN_BENCHMARK = true;
 
-describe.runIf(RUN_BENCHMARK)("benchmark", () => {
-  if (!RUN_BENCHMARK) return;
-
-  describe("plain json", () => {
+function testComplexData(sameReferences: boolean) {
+  describe(`complex data ${sameReferences ? "with" : "without"} same references`, () => {
     describe("encode", () => {
-      const coder = new Coder();
+      const data = generateData({ sameReferences });
       it("codables", () => {
+        const coder = new Coder();
         const encoded = coder.encode(data);
+
         // console.dir(encoded, { depth: null });
       });
 
       it("superjson", () => {
         const encoded = serialize(data);
       });
-
-      it("json", () => {
-        const encoded = JSON.stringify(data);
-      });
-
-      it("clone", () => {
-        const encoded = copyJSON(data as JSONValue);
-      });
     });
 
     describe("decode", () => {
-      const coder = new Coder();
-      const coderEncoded = coder.encode(data);
-      const superjsonEncoded = serialize(data);
-      it("codables", () => {
-        const decoded = coder.decode(coderEncoded);
-      });
-
-      it("superjson", () => {
-        const decoded = deserialize(superjsonEncoded);
-      });
-    });
-
-    describe("cycle", () => {
-      it("codables", () => {
-        const encoded = coder.encode(data);
-        const decoded = coder.decode(encoded);
-      });
-
-      it("superjson", () => {
-        const encoded = serialize(data);
-        const decoded = deserialize(encoded);
-      });
-    });
-  });
-
-  describe("complex data", () => {
-    describe("encode", () => {
-      const data = generateData();
-      it("codables", () => {
-        const coder = new Coder();
-        const encoded = coder.encode(data);
-      });
-
-      it("superjson", () => {
-        const encoded = serialize(data);
-      });
-    });
-
-    describe("decode", () => {
-      const data = generateData();
+      const data = generateData({ sameReferences });
 
       const coderEncoded = coder.encode(data);
       const superjsonEncoded = serialize(data);
@@ -89,19 +42,49 @@ describe.runIf(RUN_BENCHMARK)("benchmark", () => {
         // expect(decoded).toEqual(data);
       });
     });
+  });
+}
 
-    describe("cycle", () => {
-      const data = generateData();
+describe.runIf(RUN_BENCHMARK)("benchmark", () => {
+  if (!RUN_BENCHMARK) return;
+
+  describe("standard, big json", () => {
+    describe("encode", () => {
+      const coder = new Coder();
       it("codables", () => {
-        const coder = new Coder();
         const encoded = coder.encode(data);
-        const decoded = coder.decode(encoded);
+        // console.dir(encoded, { depth: null });
       });
 
       it("superjson", () => {
         const encoded = serialize(data);
-        const decoded = deserialize(encoded);
+      });
+
+      it("json.stringify", () => {
+        const encoded = JSON.stringify(data);
+      });
+
+      it("copy", () => {
+        const encoded = copyJSON(data as JSONValue);
+      });
+    });
+
+    describe("decode", () => {
+      const coder = new Coder();
+      const coderEncoded = coder.encode(data);
+      const superjsonEncoded = serialize(data);
+      it("codables", () => {
+        const decoded = coder.decode(coderEncoded);
+        // expect(decoded).toEqual(data);
+      });
+
+      it("superjson", () => {
+        const decoded = deserialize(superjsonEncoded);
+        // expect(decoded).toEqual(data);
       });
     });
   });
+
+  testComplexData(false);
+  testComplexData(true);
 });

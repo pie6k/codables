@@ -17,7 +17,7 @@ describe("DecodeContext", () => {
 
     expect(context.hasCustomTypes).toBe(true);
     expect(context.hasRefAliases).toBe(true);
-    expect(context.getIsAliasPresent("/$$map/0/1")).toBe(true);
+    expect(context.presentRefAliases.has("/$$map/0/1")).toBe(true);
     expect(context.presentRefAliases).toEqual(new Set(["/$$map/0/1"]));
   });
 
