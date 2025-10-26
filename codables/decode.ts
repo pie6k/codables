@@ -1,6 +1,6 @@
 import { DecodableTypeOf, getDecodableTypeOf } from "./utils/typeof";
 import { JSONArray, JSONObject, JSONValue } from "./types";
-import { RefAlias, Tag } from "./format";
+import { RefAlias, Tag, TagKey } from "./format";
 
 import { Coder } from "./Coder";
 import { DecodeContext } from "./DecodeContext";
@@ -37,13 +37,12 @@ function resolveRefAlias<T>(
 }
 
 function resolveTypeTag<T>(
-  input: Tag<JSONValue>,
+  tag: Tag<JSONValue>, // eg { $$set: [1, 2, 3] }
+  key: TagKey, // eg "$$set"
   context: DecodeContext,
   coder: Coder,
   path: string,
 ): T {
-  const key = Object.keys(input)[0] as keyof typeof input;
-
   const typeName = key.slice(2); // eg "$$set" -> "set"
 
   const matchingType = coder.getTypeByName(typeName);
@@ -52,7 +51,7 @@ function resolveTypeTag<T>(
     console.warn(
       `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`,
     );
-    return input[key] as T;
+    return tag[key] as T;
   }
 
   /**
@@ -60,7 +59,7 @@ function resolveTypeTag<T>(
    * needs to be decoded first.
    */
   const decodedTypeInput = decodeInput(
-    input[key],
+    tag[key],
     context,
     coder,
     addPathSegment(path, key),
@@ -124,9 +123,9 @@ function decodeRecord<T>(
 }
 
 function unescapeTag(input: Tag) {
-  const key = Object.keys(input)[0];
+  const key = Object.keys(input)[0] as keyof typeof input;
   return {
-    [key.slice(1)]: input[key as keyof typeof input],
+    [key.slice(1)]: input[key],
   };
 }
 
@@ -149,9 +148,7 @@ export function decodeInput<T>(
     case "ref-tag": {
       return resolveRefAlias<T>(input as RefAlias, context, path);
     }
-    case "type-tag": {
-      return resolveTypeTag<T>(input as Tag<JSONValue>, context, coder, path);
-    }
+
     case "array": {
       return decodeArray<T>(input as any[], context, coder, path);
     }
@@ -165,5 +162,7 @@ export function decodeInput<T>(
     }
   }
 
-  return null as T;
+  narrowType<Tag<JSONValue>>(input);
+
+  return resolveTypeTag<T>(input, decodableTypeOf, context, coder, path);
 }

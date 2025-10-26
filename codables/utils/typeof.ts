@@ -1,5 +1,6 @@
 import { DecodeContext } from "../DecodeContext";
 import { JSONValue } from "../types";
+import { TagKey } from "../format";
 import { getSpecialNumberType } from "./numbers";
 
 const OBJECT_PROTOTYPE = Object.prototype;
@@ -68,24 +69,30 @@ export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
 
   const keys = Object.keys(input);
 
+  // Tag format is { $$set: [1, 2, 3] }, it cannot have other keys
   if (keys.length !== 1) return "record";
 
   const key = keys[0];
 
-  // It is not matching tag format
-  if (!ANY_TAG_KEY_REGEXP.test(key)) return "record";
+  // It is not a tag, our tag always have something after $$. This will match something like { $$: "foo" }
 
-  if (key === "$$ref") {
-    // Match [$$ref, "path"]
-    if (typeof input.$$ref === "string") return "ref-tag";
+  if (key.startsWith("$$")) {
+    if (key === "$$") return "record";
 
-    // Something else, eg ["$$ref", { foo: "bar" }] - not a tag -> treat as normal array
-    return "record";
+    if (key === "$$ref") {
+      // Match [$$ref, "path"]
+      if (typeof input.$$ref === "string") return "ref-tag";
+
+      // Something else, eg {"$$ref": { foo: "bar" }} - not a tag -> treat as normal array
+      return "record";
+    }
+
+    return key as TagKey;
   }
 
-  if (key[0] === "~") return "escaped-tag";
+  if (ANY_TAG_KEY_REGEXP.test(key)) return "escaped-tag";
 
-  return "type-tag";
+  return "record";
 }
 
 export type DecodableTypeOf = ReturnType<typeof getDecodableTypeOf>;

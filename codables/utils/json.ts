@@ -1,5 +1,6 @@
 import { JSONArray, JSONObject, JSONValue } from "../types";
 
+import { getIsForbiddenProperty } from "./security";
 import { getIsRecord } from "../is";
 
 export function copyJSON(json: JSONValue): JSONValue {
@@ -13,8 +14,9 @@ export function copyJSON(json: JSONValue): JSONValue {
     return result;
   } else if (getIsRecord(json)) {
     const result: JSONObject = {};
+
     for (const key of Object.keys(json)) {
-      if (key === "__proto__") continue;
+      if (getIsForbiddenProperty(key)) continue;
 
       result[key] = copyJSON(json[key]);
     }

@@ -1,15 +1,16 @@
 export function getErrorExtraProperties(
-  error: Error
+  error: Error,
 ): Record<string, unknown> | null {
   const properties: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(error)) {
+  let isEmpty = true;
+
+  for (const key of Object.keys(error)) {
     if (key === "message" || key === "name" || key === "cause") continue;
 
-    properties[key] = value;
+    properties[key] = error[key as keyof Error];
+    isEmpty = false;
   }
-
-  const isEmpty = Object.keys(properties).length === 0;
 
   if (isEmpty) return null;
 

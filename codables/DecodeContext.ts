@@ -5,18 +5,13 @@ import { getDecodableTypeOf } from "./utils/typeof";
 import { narrowType } from "./utils/assert";
 
 export function analyzeEncodedData(data: JSONValue, context: DecodeContext) {
-  switch (getDecodableTypeOf(data, context)) {
+  const decodableTypeOf = getDecodableTypeOf(data, context);
+  switch (decodableTypeOf) {
     case "primitive":
       return;
     case "ref-tag":
       narrowType<RefAlias>(data);
       context.presentRefAliases.add(data.$$ref);
-      return;
-    case "type-tag":
-      narrowType<Tag<JSONValue>>(data);
-      context.hasCustomTypes = true;
-
-      analyzeEncodedData(getTagValue(data), context);
       return;
     case "array":
       narrowType<JSONArray>(data);
@@ -37,6 +32,13 @@ export function analyzeEncodedData(data: JSONValue, context: DecodeContext) {
       analyzeEncodedData(getTagValue(data), context);
       return;
   }
+
+  // Type tag
+  context.hasCustomTypes = true;
+
+  narrowType<Tag<JSONValue>>(data);
+
+  analyzeEncodedData(data[decodableTypeOf], context);
 }
 
 export class DecodeContext {
