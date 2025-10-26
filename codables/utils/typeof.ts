@@ -1,6 +1,13 @@
+import { DecodeContext } from "../DecodeContext";
 import { JSONValue } from "../types";
 import { getSpecialNumberType } from "./numbers";
-import { unsafeAssertType } from "./assert";
+
+const OBJECT_PROTOTYPE = Object.prototype;
+
+/**
+ * The goal here is to geather as much information at once, so later we avoid doing unnecessary checks
+ * such as `typeof input` or `Array.isArray(input)` etc.
+ */
 
 export function getCodableTypeOf(input: unknown) {
   if (input === null) return "primitive";
@@ -13,7 +20,7 @@ export function getCodableTypeOf(input: unknown) {
     case "string":
       return "primitive";
     case "number":
-      if (getSpecialNumberType(input as number)) return "specialNumber";
+      if (getSpecialNumberType(input as number)) return "special-number";
       return "primitive";
     case "symbol":
       return "symbol";
@@ -23,16 +30,16 @@ export function getCodableTypeOf(input: unknown) {
       return "function";
   }
 
-  unsafeAssertType<object>(input);
-
   if (Array.isArray(input)) return "array";
 
   const inputPrototype = Object.getPrototypeOf(input);
 
-  if (inputPrototype === null || inputPrototype === Object.prototype) {
+  if (inputPrototype === OBJECT_PROTOTYPE || inputPrototype === null) {
+    // It is a POJO (Plain Old JavaScript Object) aka {}
     return "record";
   }
 
+  // Instance of some class
   return "custom-object";
 }
 
@@ -40,33 +47,10 @@ export type CodableTypeOf = ReturnType<typeof getCodableTypeOf>;
 
 export type CodablePrimitive = boolean | string | undefined | number;
 
-export type ResolveCodableTypeOf<T extends CodableTypeOf> =
-  T extends "primitive"
-    ? CodablePrimitive
-    : T extends "undefined"
-    ? undefined
-    : T extends "specialNumber" | "number"
-    ? number
-    : T extends "symbol"
-    ? symbol
-    : T extends "bigint"
-    ? bigint
-    : T extends "function"
-    ? Function
-    : T extends "record"
-    ? Record<string, unknown>
-    : T extends "array"
-    ? unknown[]
-    : T extends "custom-object"
-    ? object
-    : never;
+const ANY_TAG_KEY_REGEXP = /^~*\$\$.+/;
 
-export function getDecodableTypeOf(input: JSONValue) {
-  if (input === null) return "primitive";
-
-  const typeOfInput = typeof input;
-
-  switch (typeOfInput) {
+export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
+  switch (typeof input) {
     case "boolean":
     case "string":
     case "number":
@@ -75,10 +59,31 @@ export function getDecodableTypeOf(input: JSONValue) {
     case "bigint":
     case "function":
     case "undefined":
-      throw new Error(`${typeOfInput} is not a valid JSON value`);
+      throw new Error(`undefined is not a valid JSON value`);
   }
 
-  if (Array.isArray(input)) return "array";
+  if (input === null) return "primitive";
 
-  return "record";
+  if (!Array.isArray(input)) return "record";
+
+  if (input.length !== 2) return "array";
+
+  const key = input[0];
+
+  // It is not matching tag format
+  if (typeof key !== "string" || !ANY_TAG_KEY_REGEXP.test(key)) return "array";
+
+  if (key === "$$ref") {
+    // Match [$$ref, "path"]
+    if (typeof input[1] === "string") return "ref-tag";
+
+    // Something else, eg ["$$ref", { foo: "bar" }] - not a tag -> treat as normal array
+    return "array";
+  }
+
+  if (key[0] === "~") return "escaped-tag";
+
+  return "type-tag";
 }
+
+export type DecodableTypeOf = ReturnType<typeof getDecodableTypeOf>;

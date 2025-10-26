@@ -1,13 +1,12 @@
 import { Coder, coder } from "../Coder";
 import { deserialize, serialize } from "superjson";
-import { iterateJSON, iterateJSONWithCallback } from "../utils/json";
-import { jsonBaselineClone, jsonBaselineTraverse } from "./testUtils";
 
 import { JSONValue } from "../types";
+import { copyJSON } from "../utils/json";
 import data from "./test-data.json";
 import { generateData } from "./generate";
 
-const RUN_BENCHMARK = false;
+const RUN_BENCHMARK = true;
 
 describe.runIf(RUN_BENCHMARK)("benchmark", () => {
   if (!RUN_BENCHMARK) return;
@@ -17,6 +16,7 @@ describe.runIf(RUN_BENCHMARK)("benchmark", () => {
       const coder = new Coder();
       it("codables", () => {
         const encoded = coder.encode(data);
+        // console.dir(encoded, { depth: null });
       });
 
       it("superjson", () => {
@@ -28,7 +28,7 @@ describe.runIf(RUN_BENCHMARK)("benchmark", () => {
       });
 
       it("clone", () => {
-        const encoded = jsonBaselineClone(data as JSONValue);
+        const encoded = copyJSON(data as JSONValue);
       });
     });
 

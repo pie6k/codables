@@ -7,8 +7,10 @@
     "test:watch": "vitest --watch"
   },
   "devDependencies": {
+    "@types/jsdom": "^27",
     "@types/node": "^24.9.1",
     "@vitest/coverage-v8": "4.0.1",
+    "jsdom": "^27.0.1",
     "superjson": "^2.2.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.1"

@@ -10,5 +10,8 @@
   },
   "scripts": {
     "codables": "yarn workspace codables"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
   }
 }

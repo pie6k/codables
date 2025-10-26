@@ -1,4 +1,6 @@
 export class EncodeContext {
+  constructor() {}
+
   private refFirstSeenPath = new WeakMap<object, string>();
 
   /**

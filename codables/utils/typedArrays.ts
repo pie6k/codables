@@ -16,7 +16,7 @@ export type TypedArray = InstanceType<
 >;
 
 export function getIsTypedArray(value: unknown): value is TypedArray {
-  for (const [name, type] of Object.entries(TYPED_ARRAY_MAP)) {
+  for (const type of Object.values(TYPED_ARRAY_MAP)) {
     if (value instanceof type) return true;
   }
 
@@ -24,8 +24,9 @@ export function getIsTypedArray(value: unknown): value is TypedArray {
 }
 
 export function getTypedArrayType(value: TypedArray): TypedArrayTypeName {
-  for (const [name, type] of Object.entries(TYPED_ARRAY_MAP)) {
-    if (value instanceof type) return name as TypedArrayTypeName;
+  for (const name of Object.keys(TYPED_ARRAY_MAP)) {
+    if (value instanceof TYPED_ARRAY_MAP[name as TypedArrayTypeName])
+      return name as TypedArrayTypeName;
   }
 
   throw new Error(`Unknown typed array type: ${value}`);

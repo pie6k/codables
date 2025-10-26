@@ -1,32 +1,26 @@
-import { JSONValue } from "../types";
+import { JSONArray, JSONObject, JSONValue } from "../types";
 
-export function* iterateJSON(json: JSONValue): Generator<JSONValue> {
+import { getIsRecord } from "../is";
+
+export function copyJSON(json: JSONValue): JSONValue {
   if (Array.isArray(json)) {
-    for (const item of json) {
-      yield* iterateJSON(item);
-    }
-  } else if (typeof json === "object" && json !== null) {
-    for (const [key, value] of Object.entries(json)) {
-      yield* iterateJSON(value);
-    }
-  }
-}
+    const result: JSONArray = [];
 
-type IterateResult = void | false;
+    for (let index = 0; index < json.length; index++) {
+      result[index] = copyJSON(json[index]);
+    }
 
-export function iterateJSONWithCallback(
-  json: JSONValue,
-  callback: (json: JSONValue, key: string) => IterateResult
-): void | false {
-  if (typeof json === "object" && json !== null) {
-    for (const [key, value] of Object.entries(json)) {
-      if (callback(value, key) === false) return;
-      if (iterateJSONWithCallback(value, callback) === false) return;
+    return result;
+  } else if (getIsRecord(json)) {
+    const result: JSONObject = {};
+    for (const key of Object.keys(json)) {
+      if (key === "__proto__") continue;
+
+      result[key] = copyJSON(json[key]);
     }
-  } else if (Array.isArray(json)) {
-    for (const [index, item] of json.entries()) {
-      if (callback(item, index.toString()) === false) return;
-      if (iterateJSONWithCallback(item, callback) === false) return;
-    }
+
+    return result;
   }
+
+  return json;
 }

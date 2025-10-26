@@ -1,36 +1,39 @@
+import { DecodableTypeOf, getDecodableTypeOf } from "./utils/typeof";
 import { JSONArray, JSONObject, JSONValue } from "./types";
+import { RefAlias, Tag } from "./format";
 
 import { Coder } from "./Coder";
 import { DecodeContext } from "./DecodeContext";
-import { TypeWrapper } from "./format";
 import { addPathSegment } from "./utils/JSONPointer";
-import { getDecodableTypeOf } from "./utils/typeof";
-import { getIsEscapedWrapperKey } from "./escape";
 import { getIsForbiddenProperty } from "./utils/security";
 import { getIsObject } from "./is";
-import { unsafeAssertType } from "./utils/assert";
+import { narrowType } from "./utils/assert";
 
 export function decodeInput<T>(
   input: JSONValue,
   context: DecodeContext,
   coder: Coder,
-  path: string
+  path: string,
 ): T {
-  const decodableTypeOf = getDecodableTypeOf(input);
+  let decodableTypeOf: DecodableTypeOf = getDecodableTypeOf(input, context);
 
-  if (decodableTypeOf === "primitive") return input as T;
+  switch (decodableTypeOf) {
+    case "escaped-tag": {
+      narrowType<Tag>(input);
+      input = [`${input[0].slice(1)}`, input[1]] as JSONArray;
+      decodableTypeOf = "array"; // Even tho it will look now like a tag, we want it to be treated as an array and not parsed as a custom type
+    }
+    case "primitive": {
+      return input as T;
+    }
+    case "ref-tag": {
+      narrowType<RefAlias>(input);
 
-  const entries = Object.entries(input as JSONObject | JSONArray);
-
-  if (decodableTypeOf === "record" && entries.length === 1) {
-    const [key, value] = entries[0];
-
-    if (key === "$$ref" && typeof value === "string") {
-      const source = context.resolveRefAlias(value);
+      const source = context.resolveRefAlias(input[1]);
 
       if (!source) {
         console.warn(
-          `Reference could not be resolved while decoding (${value}) at ${path}`
+          `Reference could not be resolved while decoding (${input[1]}) at ${path}`,
         );
         /**
          * TODO: Assumption here is that data is always encoded and decoded in the same order,
@@ -45,18 +48,18 @@ export function decodeInput<T>(
 
       return source as T;
     }
+    case "type-tag": {
+      narrowType<Tag<JSONValue>>(input);
 
-    if (context.hasCustomTypes && key.startsWith("$$") && key !== "$$ref") {
-      unsafeAssertType<TypeWrapper>(input);
-      const typeName = key.slice(2);
+      const typeName = input[0].slice(2); // eg "$$set" -> "set"
 
       const matchingType = coder.getTypeByName(typeName);
 
       if (!matchingType) {
         console.warn(
-          `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`
+          `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`,
         );
-        return value as T;
+        return input[1] as T;
       }
 
       /**
@@ -64,47 +67,59 @@ export function decodeInput<T>(
        * needs to be decoded first.
        */
       const decodedTypeInput = decodeInput(
-        input[matchingType.wrapperKey],
+        input[1],
         context,
         coder,
-        addPathSegment(path, matchingType.wrapperKey)
+        addPathSegment(path, 1),
       );
 
-      // Now decode data is ready, we can decode it using the type definition
-      return matchingType.decoder(decodedTypeInput) as T;
+      return matchingType.decode(decodedTypeInput) as T;
     }
+    case "array": {
+      narrowType<JSONArray>(input);
 
-    // If we are dealing with an escaped wrapper key, we need to unescape it
-    // eg. { "~$$set": [1, 2, 3] } -> { "$$set": [1, 2, 3] }
-    // It happens if someone encoded data that already looks like our internal format.
-    if (getIsEscapedWrapperKey(key)) {
-      entries[0][0] = key.slice(1);
+      const result: any[] = [];
+
+      context.registerRef(path, result);
+
+      for (let key = 0; key < input.length; key++) {
+        const fullPath = addPathSegment(path, key);
+
+        const decoded = decodeInput<any>(input[key], context, coder, fullPath);
+
+        result[key] = decoded;
+
+        if (context.hasRefAliases && getIsObject(decoded)) {
+          context.registerRef(fullPath, decoded);
+        }
+      }
+
+      return result as T;
+    }
+    case "record": {
+      narrowType<JSONObject>(input);
+
+      const result: Record<string, any> = {};
+
+      context.registerRef(path, result);
+
+      for (const key of Object.keys(input)) {
+        if (getIsForbiddenProperty(key)) continue;
+
+        const fullPath = addPathSegment(path, key);
+
+        const decoded = decodeInput<any>(input[key], context, coder, fullPath);
+
+        result[key] = decoded;
+
+        if (context.hasRefAliases && getIsObject(decoded)) {
+          context.registerRef(fullPath, decoded);
+        }
+      }
+
+      return result as T;
     }
   }
 
-  const result: any = decodableTypeOf === "array" ? [] : {};
-
-  // The result is not yet ready, but we already have its reference and path, so we can register it
-  // in case something eg. directly inside of it references its parent, eg { foo: { parent: <<refToParent>>}}
-  context.registerRefIfNeeded(path, result);
-
-  for (const [key, value] of entries) {
-    /**
-     * We need to skip forbidden properties such as `__proto__`, `constructor`, `prototype`, etc.
-     * This could be a potential security risk, allowing attackers to pollute the prototype chain.
-     */
-    if (getIsForbiddenProperty(key)) continue;
-
-    const fullPath = addPathSegment(path, key);
-
-    const decoded = decodeInput<any>(value, context, coder, fullPath);
-
-    result[key] = decoded;
-
-    if (context.hasRefAliases && getIsObject(decoded)) {
-      context.registerRefIfNeeded(fullPath, decoded);
-    }
-  }
-
-  return result as T;
+  return null as T;
 }

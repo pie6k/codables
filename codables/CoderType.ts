@@ -1,19 +1,17 @@
-import { TypeKey, TypeWrapper } from "./format";
+import { Tag, TagKey } from "./format";
 
 interface CoderTypeDefinition<Item, Data> {
   name: string;
+  canHandle: (value: unknown) => value is Item;
   encode: (data: Item) => Data;
   decode: (data: Data) => Item;
-  canHandle: (value: unknown) => value is Item;
 }
 
-function wrapAsCustomType<Name extends string, Data>(
+export function createTag<Name extends string, Data>(
   name: Name,
-  data: Data
-): TypeWrapper<Data, Name> {
-  return {
-    [`$$${name}`]: data,
-  } as TypeWrapper<Data, Name>;
+  data: Data,
+): Tag<Data, Name> {
+  return [`$$${name}`, data];
 }
 
 export class CoderType<Item = any, Data = any> {
@@ -23,30 +21,32 @@ export class CoderType<Item = any, Data = any> {
     return this.definition.name;
   }
 
-  get wrapperKey(): TypeKey<typeof this.name> {
+  get tagKey(): TagKey<typeof this.name> {
     return `$$${this.name}`;
   }
 
-  get encoder() {
+  private get encoder() {
     return this.definition.encode;
   }
 
-  get decoder() {
+  private get decoder() {
     return this.definition.decode;
   }
 
-  encode(value: Item): TypeWrapper<Data, typeof this.name> {
-    const encodedData = this.encoder(value);
+  encode(value: Item): Tag<Data, typeof this.name> {
+    return createTag(this.name, this.encoder(value));
+  }
 
-    return wrapAsCustomType(this.name, encodedData);
+  decode(data: Data): Item {
+    return this.definition.decode(data);
   }
 
   canHandle(value: unknown): value is Item {
     return this.definition.canHandle(value);
   }
 
-  wrap(data: Data): TypeWrapper<Data, typeof this.name> {
-    return wrapAsCustomType(this.name, data);
+  createTag(data: Data): Tag<Data, typeof this.name> {
+    return createTag(this.name, data);
   }
 }
 
@@ -54,7 +54,7 @@ export function createCoderType<Item, Data>(
   name: string,
   canHandle: (value: unknown) => value is Item,
   encode: (data: Item) => Data,
-  decode: (data: Data) => Item
+  decode: (data: Data) => Item,
 ): CoderType<Item, Data> {
   return new CoderType({
     name,

@@ -6,16 +6,17 @@ import { getCodableClassType, getIsCodableClass } from "./codableClass";
 
 import { DecodeContext } from "./DecodeContext";
 import { EncodeContext } from "./EncodeContext";
+import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
 
 const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
-  getIsCoderType
+  getIsCoderType,
 );
 
 export class Coder {
   private typesMap = new Map<string, CoderType>(
-    DEFAULT_TYPES.map((type) => [type.name, type])
+    DEFAULT_TYPES.map((type) => [type.name, type]),
   );
 
   private registeredClasses = new WeakSet<AnyCodableClass<any>>();
@@ -27,7 +28,7 @@ export class Coder {
   registerType(...types: Array<CoderType>) {
     if (this.isDefault) {
       throw new Error(
-        "Cannot register types on the default coder. Create a custom coder instance using `new Coder()` and register types on that instance."
+        "Cannot register types on the default coder. Create a custom coder instance using `new Coder()` and register types on that instance.",
       );
     }
 
@@ -43,7 +44,7 @@ export class Coder {
   registerClass(...classes: AnyCodableClass<any>[]) {
     if (this.isDefault) {
       throw new Error(
-        "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance."
+        "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance.",
       );
     }
 
@@ -77,7 +78,7 @@ export class Coder {
     name: string,
     canEncode: (value: unknown) => value is Item,
     encode: (data: Item) => Data,
-    decode: (data: Data) => Item
+    decode: (data: Data) => Item,
   ) {
     return this.registerType(createCoderType(name, canEncode, encode, decode));
   }
@@ -90,6 +91,8 @@ export class Coder {
 
   decode<T>(value: JSONValue): T {
     const context = new DecodeContext(value);
+
+    if (context.isPlainJSON) return copyJSON(value) as T;
 
     return decodeInput<T>(value, context, this, "/");
   }

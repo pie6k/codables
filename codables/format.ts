@@ -1,14 +1,12 @@
 import { getIsRecord } from "./is";
 
-export type TypeKey<T extends string = string> = `$$${T}`;
+export type TagKey<T extends string = string> = `$$${T}`;
 
-export type TypeWrapper<V = unknown, T extends string = string> = {
-  [key in TypeKey<T>]: V;
-};
+export type Tag<V = unknown, T extends string = string> = [TagKey<T>, V];
 
-export type RefAlias = TypeWrapper<string, "ref">;
+export type RefAlias = Tag<string, "ref">;
 
-export function getIsTypeKey(key: string, ofType?: string): key is TypeKey {
+export function getIsTagKey(key: string, ofType?: string): key is TagKey {
   if (!key.startsWith("$$")) return false;
 
   if (ofType === undefined) return true;
@@ -16,33 +14,29 @@ export function getIsTypeKey(key: string, ofType?: string): key is TypeKey {
   return key.slice(2) === ofType;
 }
 
-export function getIsTypeWrapper<T extends string>(
+export function getIsTag<T extends string>(
   object: unknown,
   ofType?: T
-): object is TypeWrapper<T> {
-  if (!getIsRecord(object)) return false;
+): object is Tag<T> {
+  if (!Array.isArray(object)) return false;
 
-  const keys = Object.keys(object);
+  if (object.length !== 2) return false;
 
-  if (keys.length !== 1) return false;
+  if (ofType === undefined && object[1] === "$$ref") return false;
 
-  const key = keys[0];
-
-  if (ofType === undefined && key === "$$ref") return false;
-
-  if (getIsTypeKey(key, ofType)) return true;
+  if (getIsTagKey(object[0], ofType)) return true;
 
   return false;
 }
 
 export function getIsRefAlias(object: unknown): object is RefAlias {
-  return getIsTypeWrapper(object, "ref");
+  return getIsTag(object, "ref");
 }
 
-export function getTypeWrapperTypeName(typeWrapper: TypeWrapper): string {
+export function getTypeWrapperTypeName(typeWrapper: Tag): string {
   const key = Object.keys(typeWrapper)[0];
 
-  if (!getIsTypeKey(key))
+  if (!getIsTagKey(key))
     throw new Error(`Invalid type wrapper: ${JSON.stringify(typeWrapper)}`);
 
   return key.slice(2);

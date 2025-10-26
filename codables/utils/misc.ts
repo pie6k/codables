@@ -8,12 +8,6 @@ export function resolveThunk<T>(thunk: Thunk<T>): T {
   return thunk;
 }
 
-export function* typedEntries<T extends object>(input: T) {
-  for (const [key, value] of Object.entries(input)) {
-    yield [key as keyof T, value] as const;
-  }
-}
-
 export function getSymbolKey(symbol: symbol): string {
   const nativeKey = Symbol.keyFor(symbol);
   if (nativeKey) return nativeKey;
@@ -23,11 +17,12 @@ export function getSymbolKey(symbol: symbol): string {
 }
 
 export function removeUndefinedProperties<T extends Record<string, unknown>>(
-  input: T
+  input: T,
 ): T {
   const result: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(input)) {
+  for (const key of Object.keys(input)) {
+    const value = input[key as keyof T];
     if (value !== undefined) {
       result[key] = value;
     }

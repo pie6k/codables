@@ -1,4 +1,6 @@
-function escapePathSegment(segment: string): string {
+function escapePathSegment(segment: string | number): string {
+  if (typeof segment === "number") return `${segment}`;
+
   return segment.replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
@@ -48,10 +50,15 @@ export class JSONPointer {
   }
 }
 
-export function addPathSegment(pointer: string, segment: string): string {
-  if (pointer === "/" || pointer === "") {
-    return `/${escapePathSegment(segment)}`;
+export function addPathSegment(
+  currentPointer: string,
+  newSegment: string | number,
+): string {
+  switch (currentPointer) {
+    case "/":
+    case "":
+      return `/${escapePathSegment(newSegment)}`;
+    default:
+      return `${currentPointer}/${escapePathSegment(newSegment)}`;
   }
-
-  return `${pointer}/${escapePathSegment(segment)}`;
 }

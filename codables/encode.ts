@@ -1,13 +1,13 @@
-import { addPathSegment } from "./utils/JSONPointer";
-
 import { $$bigInt, $$num, $$symbol, $$undefined } from "./builtin";
+import { JSONPrimitive, JSONValue } from "./types";
+
 import { Coder } from "./Coder";
 import { EncodeContext } from "./EncodeContext";
-import { RefAlias } from "./format";
-import { JSONPrimitive, JSONValue } from "./types";
-import { unsafeAssertType } from "./utils/assert";
-import { getIsForbiddenProperty } from "./utils/security";
+import { addPathSegment } from "./utils/JSONPointer";
+import { createTag } from "./CoderType";
 import { getCodableTypeOf } from "./utils/typeof";
+import { getIsForbiddenProperty } from "./utils/security";
+import { narrowType } from "./utils/assert";
 
 /**
  * It is either our tag with $$ or already escaped tag (~$$) which we will escape further.
@@ -19,18 +19,26 @@ function getShouldEscapeKey(key: string) {
   return /^~*\$\$/.test(key);
 }
 
+function getShouldEscapeMaybeTag(input: any[]): boolean {
+  return (
+    input.length === 2 &&
+    typeof input[0] === "string" &&
+    getShouldEscapeKey(input[0])
+  );
+}
+
 export function encodeInput(
   input: unknown,
   encodeContext: EncodeContext,
   coder: Coder,
-  path: string
+  path: string,
 ): JSONValue {
   const codableTypeOf = getCodableTypeOf(input);
 
   switch (codableTypeOf) {
     case "primitive":
       return input as JSONPrimitive;
-    case "specialNumber":
+    case "special-number":
       return $$num.encode(input as number);
     case "symbol":
       return $$symbol.encode(input as symbol);
@@ -43,16 +51,14 @@ export function encodeInput(
   }
 
   // Either a record or an array
-  unsafeAssertType<object>(input);
+  narrowType<object>(input);
 
   // See if this object was already present before at some other path
   const alreadySeenAtPath = encodeContext.getAlreadySeenObjectPath(input);
 
   if (alreadySeenAtPath !== null) {
     // If so, instead of continuing - return an alias to the already seen object
-    return {
-      $$ref: alreadySeenAtPath,
-    } satisfies RefAlias;
+    return createTag("ref", alreadySeenAtPath);
   }
 
   /**
@@ -81,34 +87,52 @@ export function encodeInput(
      *
      * Let's replace the data with the encoded data.
      */
-    wrapper[matchingType.wrapperKey] = encodeInput(
-      wrapper[matchingType.wrapperKey],
+    wrapper[1] = encodeInput(
+      wrapper[1],
       encodeContext,
       coder,
       // As object is wrapped in eg. { $$set: [1, 2, 3] }, we need to add the path segment
-      addPathSegment(path, matchingType.wrapperKey)
+      addPathSegment(path, 1),
     );
 
     return wrapper;
   }
 
-  const entries = Object.entries(input);
+  if (codableTypeOf === "array") {
+    narrowType<any[]>(input);
 
-  /**
-   * Quite edge case:
-   * Data that collides with our internal format was explicitly provided.
-   * We need to escape it, or otherwise this data would be decoded as a custom type later
-   *
-   * Will turn eg { $$set: [1, 2, 3] } into { "~$$set": [1, 2, 3] }
-   */
-  if (entries.length === 1 && getShouldEscapeKey(entries[0][0])) {
-    // Escape the key
-    entries[0][0] = `~${entries[0][0]}`;
+    /**
+     * Quite edge case:
+     * Data that collides with our internal format was explicitly provided.
+     * We need to escape it, or otherwise this data would be decoded as a custom type later
+     *
+     * Will turn eg { $$set: [1, 2, 3] } into { "~$$set": [1, 2, 3] }
+     */
+    if (getShouldEscapeMaybeTag(input)) {
+      input = [`~${input[0]}`, input[1]] as object;
+
+      narrowType<any[]>(input);
+    }
+
+    const result: any[] = [];
+
+    for (let i = 0; i < input.length; i++) {
+      result[i] = encodeInput(
+        input[i],
+        encodeContext,
+        coder,
+        addPathSegment(path, i),
+      );
+    }
+
+    return result;
   }
 
-  const result: any = codableTypeOf === "array" ? [] : {};
+  const keys = Object.keys(input);
 
-  for (const [key, value] of entries) {
+  const result = {} as Record<string, any>;
+
+  for (const key of keys) {
     // key = sanitizePathSegment(key);
 
     /**
@@ -120,10 +144,10 @@ export function encodeInput(
     if (getIsForbiddenProperty(key)) continue;
 
     result[key] = encodeInput(
-      value,
+      input[key as keyof typeof input],
       encodeContext,
       coder,
-      addPathSegment(path, key)
+      addPathSegment(path, key),
     );
   }
 
