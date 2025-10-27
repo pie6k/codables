@@ -1,4 +1,4 @@
-import { Coder, coder } from "../Coder";
+import { Coder, defaultCoder } from "../Coder";
 
 import { JSONValue } from "../types";
 import { captureWarnings } from "./testUtils";
@@ -15,11 +15,11 @@ function expectSerializeAndDeserialize(
   value: unknown,
   encodedShape?: JSONValue,
 ) {
-  const encoded = coder.encode(value);
+  const encoded = defaultCoder.encode(value);
   if (encodedShape) {
     expect(encoded).toEqual(encodedShape);
   }
-  const decoded = coder.decode(encoded);
+  const decoded = defaultCoder.decode(encoded);
   expect(decoded).toEqual(value);
 }
 
@@ -152,17 +152,17 @@ describe("plain json", () => {
       { a: 1, b: [4, 5, 6, null] },
     ];
 
-    expect(coder.encode(a)).toEqual(a);
-    expect(coder.decode(a)).toEqual(a);
+    expect(defaultCoder.encode(a)).toEqual(a);
+    expect(defaultCoder.decode(a)).toEqual(a);
 
-    expect(coder.encode(null)).toEqual(null);
-    expect(coder.decode(true)).toEqual(true);
-    expect(coder.decode(false)).toEqual(false);
-    expect(coder.decode(1)).toEqual(1);
-    expect(coder.decode(2.5)).toEqual(2.5);
-    expect(coder.decode("foo")).toEqual("foo");
-    expect(coder.encode([])).toEqual([]);
-    expect(coder.encode({})).toEqual({});
+    expect(defaultCoder.encode(null)).toEqual(null);
+    expect(defaultCoder.decode(true)).toEqual(true);
+    expect(defaultCoder.decode(false)).toEqual(false);
+    expect(defaultCoder.decode(1)).toEqual(1);
+    expect(defaultCoder.decode(2.5)).toEqual(2.5);
+    expect(defaultCoder.decode("foo")).toEqual("foo");
+    expect(defaultCoder.encode([])).toEqual([]);
+    expect(defaultCoder.encode({})).toEqual({});
   });
 });
 
@@ -200,8 +200,8 @@ describe("stringify/parse", () => {
       { baz: false, qux: null, quux: true },
       { a: 1, b: [4, 5, 6, null] },
     ];
-    expect(coder.stringify(a)).toEqual(JSON.stringify(a));
-    expect(coder.parse(coder.stringify(a))).toEqual(a);
+    expect(defaultCoder.stringify(a)).toEqual(JSON.stringify(a));
+    expect(defaultCoder.parse(defaultCoder.stringify(a))).toEqual(a);
   });
 
   it("should stringify and parse custom types", () => {
@@ -228,7 +228,7 @@ describe("stringify/parse", () => {
 
 describe("isDefault", () => {
   it("should return true if the coder is the default coder", () => {
-    expect(coder.isDefault).toBe(true);
+    expect(defaultCoder.isDefault).toBe(true);
 
     const otherCoder = new Coder();
 
@@ -237,7 +237,7 @@ describe("isDefault", () => {
 
   it("should throw an error if a type is registered on the default coder", () => {
     expect(() => {
-      coder.addType(
+      defaultCoder.addType(
         "foo",
         (value) => typeof value === "string",
         (value) => value,
@@ -252,26 +252,28 @@ describe("isDefault", () => {
 describe("dots in paths", () => {
   it("should properly encode and decode paths with dots", () => {
     const foo = { "foo/bar": "baz" };
-    const encoded = coder.encode(foo);
+    const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual({ "foo/bar": "baz" });
-    expect(coder.decode({ "foo/bar": "baz" })).toEqual(foo);
+    expect(defaultCoder.decode({ "foo/bar": "baz" })).toEqual(foo);
   });
 
   it("should properly encode and decode paths with dots in nested objects", () => {
     const foo = { "foo/bar": { "baz/qux": "quux" } };
-    const encoded = coder.encode(foo);
+    const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual({ "foo/bar": { "baz/qux": "quux" } });
-    expect(coder.decode({ "foo/bar": { "baz/qux": "quux" } })).toEqual(foo);
+    expect(defaultCoder.decode({ "foo/bar": { "baz/qux": "quux" } })).toEqual(
+      foo,
+    );
   });
 
   it("works if path contains explicit \\", () => {
     const foo = { "foo/bar": "baz" };
-    const encoded = coder.encode(foo);
+    const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual({ "foo/bar": "baz" });
-    expect(coder.decode({ "foo/bar": "baz" })).toEqual(foo);
+    expect(defaultCoder.decode({ "foo/bar": "baz" })).toEqual(foo);
   });
 });
 
@@ -279,10 +281,10 @@ describe("symbols", () => {
   it("should keep the same symbol reference", () => {
     const symbol = Symbol("foo");
     const input = [symbol, symbol];
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
     expect(encoded).toEqual([{ $$Symbol: "foo" }, { $$Symbol: "foo" }]);
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
     expect(decoded[0]).toBe(decoded[1]);
   });
@@ -292,8 +294,8 @@ describe("symbols", () => {
     const barSymbol = Symbol("bar");
 
     const input = [fooSymbol, barSymbol];
-    const encoded = coder.encode(input);
-    const decoded = coder.decode<typeof input>(encoded);
+    const encoded = defaultCoder.encode(input);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
 
     expect(decoded[0]).toBe(fooSymbol);
     expect(decoded[1]).toBe(barSymbol);
@@ -302,7 +304,7 @@ describe("symbols", () => {
   it("should work with symbols created with .for", () => {
     const fooSymbol = Symbol.for("createdbefore");
 
-    const decoded = coder.decode<any>({ $$Symbol: "createdbefore" });
+    const decoded = defaultCoder.decode<any>({ $$Symbol: "createdbefore" });
 
     expect(fooSymbol).toBe(Symbol.for("createdbefore"));
     expect(decoded).toBe(fooSymbol);
@@ -330,10 +332,10 @@ describe("coding errors", () => {
 describe("object with array like keys", () => {
   it("should properly encode and decode object with array like keys", () => {
     const foo = { "0": "bar", "1": "baz" };
-    const encoded = coder.encode(foo);
+    const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual({ "0": "bar", "1": "baz" });
-    expect(coder.decode({ "0": "bar", "1": "baz" })).toEqual(foo);
+    expect(defaultCoder.decode({ "0": "bar", "1": "baz" })).toEqual(foo);
   });
 });
 
@@ -344,7 +346,7 @@ describe("map with regex keys", () => {
       [/foo/, "foo"],
     ]);
 
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
 
     expect(encoded).toEqual({
       $$Map: [
@@ -353,7 +355,7 @@ describe("map with regex keys", () => {
       ],
     });
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
   });
 });
@@ -373,13 +375,13 @@ describe("custom errors", () => {
     const input = new Error("Beep boop, you don't wanna see me. I'm an error!");
     expect(input).toHaveProperty("stack");
 
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
 
     expect(encoded).toEqual({
       $$Error: "Beep boop, you don't wanna see me. I'm an error!",
     });
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
   });
 });
@@ -388,7 +390,7 @@ describe("Object.create(null)", () => {
   it("should properly encode and decode Object.create(null)", () => {
     const foo = Object.create(null);
     foo.bar = "baz";
-    const encoded = coder.encode(foo);
+    const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual(foo);
   });
@@ -396,7 +398,7 @@ describe("Object.create(null)", () => {
 
 describe("prototype pollution", () => {
   it("handles weird inputs", () => {
-    expect(coder.encode({ constructor: {} })).toStrictEqual({});
+    expect(defaultCoder.encode({ constructor: {} })).toStrictEqual({});
   });
 });
 
@@ -404,11 +406,11 @@ describe("format collisions", () => {
   it("properly encodes and decodes data that collides with internal format", () => {
     const input = { $$Set: [1, 2, 3] };
 
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
 
     expect(encoded).toEqual({ "~$$Set": [1, 2, 3] });
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual(input);
     expect(decoded.$$Set).toEqual([1, 2, 3]);
@@ -417,11 +419,11 @@ describe("format collisions", () => {
   it("handles somehow already escaped type keys", () => {
     const input = { "~$$Set": [1, 2, 3] };
 
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
 
     expect(encoded).toEqual({ "~~$$Set": [1, 2, 3] });
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual(input);
   });
@@ -432,13 +434,13 @@ describe("format collisions", () => {
 
     let current: any = input;
     for (let i = 0; i < N; i++) {
-      current = coder.encode(current);
+      current = defaultCoder.encode(current);
     }
 
     expect(current).toEqual({ "~~~~~$$Set": [1, 2, 3] });
 
     for (let i = 0; i < N; i++) {
-      current = coder.decode(current);
+      current = defaultCoder.decode(current);
     }
 
     expect(current).toEqual(input);
@@ -452,12 +454,12 @@ describe("uncodable handling", () => {
 
   const input = { foo: new UnknownClass("foo") };
   it("null mode", () => {
-    expect(coder.encode(input, { unknownInputMode: "null" })).toEqual({
+    expect(defaultCoder.encode(input, { unknownInputMode: "null" })).toEqual({
       foo: null,
     });
   });
   it("unchanged mode", () => {
-    const encoded: any = coder.encode(input, {
+    const encoded: any = defaultCoder.encode(input, {
       unknownInputMode: "unchanged",
     });
 
@@ -465,9 +467,27 @@ describe("uncodable handling", () => {
   });
   it("throw mode", () => {
     expect(() =>
-      coder.encode(input, { unknownInputMode: "throw" }),
+      defaultCoder.encode(input, { unknownInputMode: "throw" }),
     ).toThrowErrorMatchingInlineSnapshot(
       `[Error: Not able to encode - no matching type found]`,
     );
+  });
+});
+
+describe("copy", () => {
+  it("should copy the value", () => {
+    const input = { foo: "bar" };
+    const copied = defaultCoder.copy(input);
+    expect(copied).toEqual(input);
+    expect(copied).not.toBe(input);
+  });
+
+  it("should copy nested values, with complex types", () => {
+    const input = { foo: new Map([["bar", { bar: "baz" }]]) };
+    const copied = defaultCoder.copy<typeof input>(input);
+    expect(copied.foo).toEqual(input.foo);
+    expect(copied.foo).not.toBe(input.foo);
+    expect(copied.foo.get("bar")).toEqual(input.foo.get("bar"));
+    expect(copied.foo.get("bar")).not.toBe(input.foo.get("bar"));
   });
 });

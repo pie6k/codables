@@ -1,4 +1,4 @@
-import { Coder, coder } from "../Coder";
+import { Coder, defaultCoder } from "../Coder";
 import { deserialize, serialize } from "superjson";
 
 import { JSONValue } from "../types";
@@ -13,13 +13,15 @@ function testComplexData(sameReferences: boolean) {
     describe("encode", () => {
       const data = generateData({ sameReferences });
       it("codables", () => {
-        const encoded = coder.encode(data);
+        const encoded = defaultCoder.encode(data);
 
         // console.dir(encoded, { depth: null });
       });
 
       it("codables (no preserve references)", () => {
-        const encoded = coder.encode(data, { preserveReferences: false });
+        const encoded = defaultCoder.encode(data, {
+          preserveReferences: false,
+        });
 
         // console.dir(encoded, { depth: null });
       });
@@ -32,13 +34,13 @@ function testComplexData(sameReferences: boolean) {
     describe("decode", () => {
       const data = generateData({ sameReferences });
 
-      const coderEncoded = coder.encode(data);
+      const coderEncoded = defaultCoder.encode(data);
       const superjsonEncoded = serialize(data);
 
       // console.dir(coderEncoded, { depth: null });
 
       it("codables", () => {
-        const decoded = coder.decode(coderEncoded);
+        const decoded = defaultCoder.decode(coderEncoded);
         // expect(decoded).toEqual(data);
       });
 

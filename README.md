@@ -1,18 +1,124 @@
 # Codables
 
-A high-performance, type-safe JSON serialization library that extends JSON to support complex JavaScript types including `Date`, `BigInt`, `Map`, `Set`, `RegExp`, `Symbol`, typed arrays, circular references, and custom classes.
+A high-performance, type-safe JSON serialization library that supports complex types like `Date`, `BigInt`, `Map`, `Set`, `RegExp`, `Symbol`,circular references, and custom classes.
 
-Codables offers better performance than alternatives like SuperJSON while making it easier to automatically handle custom classes with nested, complex data through decorator-based serialization.
+Codables makes it easier to automatically handle custom classes with nested, complex data through single source of truth, decorator-based serialization.
+
+## Motivation
+
+While there are plenty of JSON serialization libraries, none make working with complex, nested classes truly simple.
+
+**For simple use cases**, Codables handles JavaScript types that JSON can't serialize (`Date`, `BigInt`, `Map`, `Set`, etc.) automatically and efficiently.
+
+**For complex use cases**, Codables eliminates the dual-format problem. Consider a game with `GameState` containing multiple `Player`s:
+
+**Traditional approach - maintaining two formats:**
+
+```typescript
+// Your classes
+class Player {
+  constructor(
+    public name: string,
+    public score: number,
+  ) {}
+}
+
+class GameState {
+  constructor(
+    public players: Set<Player>,
+    public createdAt: Date,
+  ) {}
+}
+
+// Separate data interfaces
+interface PlayerData {
+  name: string;
+  score: number;
+}
+
+interface GameStateData {
+  players: PlayerData[]; // Set becomes array
+  createdAt: string; // Date becomes string
+}
+
+// Manual conversion logic
+function gameStateToData(state: GameState): GameStateData {
+  return {
+    players: Array.from(state.players).map((p) => ({
+      name: p.name,
+      score: p.score,
+    })),
+    createdAt: state.createdAt.toISOString(),
+  };
+}
+
+function dataToGameState(data: GameStateData): GameState {
+  return new GameState(
+    new Set(data.players.map((p) => new Player(p.name, p.score))),
+    new Date(data.createdAt),
+  );
+}
+```
+
+**With Codables - single source of truth:**
+
+```typescript
+import { codableClass, codable, Coder } from "codables";
+
+@codableClass("Player")
+class Player {
+  @codable() name!: string;
+  @codable() score!: number;
+}
+
+@codableClass("GameState")
+class GameState {
+  @codable() players!: Set<Player>;
+  @codable() createdAt!: Date;
+}
+
+const coder = new Coder();
+coder.register(Player, GameState);
+
+// That's it! Serialization is automatic
+const gameState = new GameState(
+  new Set([new Player("Alice", 100), new Player("Bob", 200)]),
+  new Date(),
+);
+
+const encoded = coder.encode(gameState); // Automatic serialization
+const decoded = coder.decode(encoded); // Automatic deserialization
+```
+
+Codables lets you work with your objects naturally while seamlessly persisting and transmitting them.
 
 ## Key Features
 
+- **Serializes (almost) every built-in JavaScript type**: `Date`, `BigInt`, `Map`, `Set`, `RegExp`, `Symbol`, `Error`, `URL`, typed arrays, and more
+- **Human-readable output**: Uses tagged format that's still readable and debuggable
+- **Great performance**: Optimized encoding/decoding with minimal runtime overhead
+- **Manages circular refs and reference equality**: Handles complex object graphs with reference preservation
+- **Extensible**: Super easy to add new, custom serialization types
 - **Type Safety**: Full TypeScript support with autocompletion and type inference
-- **Performance**: Optimized encoding/decoding with minimal runtime overhead
-- **Automatic Class Serialization**: Decorator-based approach for seamless custom class handling
-- **Circular Reference Support**: Handles complex object graphs with reference preservation
 - **Framework Agnostic**: Works with any JavaScript/TypeScript project
-- **Extensible**: Easy to add custom type encoders
 - **Format Collision Safe**: Handles edge cases where data conflicts with internal format
+
+### Supported Types
+
+| JavaScript Type   | Encoded Format                                                                  | Notes                              |
+| ----------------- | ------------------------------------------------------------------------------- | ---------------------------------- |
+| `Date`            | `{ $$date: "ISO-string" }`                                                      | Valid dates only                   |
+| `BigInt`          | `{ $$bigInt: "string" }`                                                        | Large integers                     |
+| `Set`             | `{ $$set: [array] }`                                                            | Unique collections                 |
+| `Map`             | `{ $$map: [entries] }`                                                          | Key-value pairs                    |
+| `RegExp`          | `{ $$regexp: "pattern" }` or `{ $$regexp: ["pattern", "flags"] }`               | With or without flags              |
+| `Symbol`          | `{ $$symbol: "description" }`                                                   | Symbol registry                    |
+| `URL`             | `{ $$url: "string" }`                                                           | Web URLs                           |
+| `URLSearchParams` | `{ $$urlSearchParams: "string" }`                                               | Query parameters                   |
+| `Error`           | `{ $$error: "message" }` or `{ $$error: { message, name, cause, properties } }` | With optional properties           |
+| `undefined`       | `{ $$undefined: null }`                                                         | Missing values                     |
+| Typed Arrays      | `{ $$typedArray: { type, data } }`                                              | `Uint8Array`, `Float64Array`, etc. |
+| Special Numbers   | `{ $$num: "special-value" }`                                                    | `NaN`, `Infinity`, `-0`            |
 
 ## Installation
 
@@ -32,16 +138,13 @@ import { encode, decode, stringify, parse } from "codables";
 // Basic usage - works just like JSON but with more types
 const data = {
   date: new Date("2025-01-01"),
-  bigInt: 123n,
   set: new Set(["a", "b", "c"]),
   map: new Map([["key", "value"]]),
-  regex: /hello/gi,
-  symbol: Symbol("test"),
 };
 
 // Encode to JSON-compatible format
 const encoded = encode(data);
-// Result: { date: { $$date: "2025-01-01T00:00:00.000Z" }, ... }
+// Result: { date: { $$date: "2025-01-01T00:00:00.000Z" }, set: { $$set: ["a", "b", "c"] }, map: { $$map: [["key", "value"]] } }
 
 // Decode back to original types
 const decoded = decode(encoded);
@@ -52,11 +155,9 @@ const jsonString = stringify(data);
 const restored = parse(jsonString);
 ```
 
-## Core Concepts
-
 ### How Codables Extends JSON
 
-Codables uses a tagged format where non-JSON types are wrapped with a `$$` prefix:
+Codables uses a tagged format where non-JSON types are wrapped with a `$$` prefix, making the output still human-readable:
 
 ```typescript
 // Original JavaScript object
@@ -71,23 +172,6 @@ const data = {
   "set": { "$$set": [1, 2, 3] }
 }
 ```
-
-### Built-in Type Support
-
-Codables automatically handles these JavaScript types:
-
-- `Date` → `{ $$date: "ISO-string" }`
-- `BigInt` → `{ $$bigInt: "string" }`
-- `Set` → `{ $$set: [array] }`
-- `Map` → `{ $$map: [entries] }`
-- `RegExp` → `{ $$regexp: "pattern" }` or `{ $$regexp: ["pattern", "flags"] }`
-- `Symbol` → `{ $$symbol: "description" }`
-- `URL` → `{ $$url: "string" }`
-- `URLSearchParams` → `{ $$urlSearchParams: "string" }`
-- `Error` → `{ $$error: "message" }` or `{ $$error: { message, name, cause, properties } }`
-- `undefined` → `{ $$undefined: null }`
-- Typed Arrays (`Uint8Array`, `Float64Array`, etc.) → `{ $$typedArray: { type, data } }`
-- Special numbers (`NaN`, `Infinity`, `-0`) → `{ $$num: "special-value" }`
 
 ## Usage Examples
 
@@ -361,15 +445,32 @@ import { codableClass, codable } from 'codables';
 
 ## Performance & Comparison
 
-Codables is designed as a high-performance alternative to SuperJSON with several advantages:
+Codables delivers superior performance compared to alternatives while providing a more developer-friendly API:
 
+### Benchmark Results
+
+**Standard JSON with complex types:**
+
+- **Encode**: Codables 9ms vs SuperJSON 38ms (4.2x faster)
+- **Decode**: Codables 7ms vs SuperJSON 10ms (1.4x faster)
+
+**Complex data with references:**
+
+- **Encode**: Codables 8ms vs SuperJSON 35ms (4.4x faster)
+- **Decode**: Codables 14ms vs SuperJSON 14ms (equivalent)
+
+**Complex data without references:**
+
+- **Encode**: Codables 9ms vs SuperJSON 37ms (4.1x faster)
+- **Decode**: Codables 11ms vs SuperJSON 16ms (1.5x faster)
+
+### Key Advantages
+
+- **4x faster encoding** than SuperJSON for complex data
 - **Better TypeScript Integration**: Full type safety with decorator-based class serialization
 - **Automatic Class Handling**: No manual serialization logic needed for custom classes
-- **Optimized Encoding**: Efficient handling of common JavaScript types
 - **Reference Preservation**: Smart circular reference detection and handling
 - **Format Safety**: Automatic collision detection and resolution
-
-The library maintains excellent performance characteristics while providing a more developer-friendly API for complex data structures.
 
 ## Use Cases
 

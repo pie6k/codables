@@ -1,4 +1,4 @@
-import { Coder, coder } from "../Coder";
+import { Coder, defaultCoder } from "../Coder";
 
 import { JSONValue } from "../types";
 
@@ -7,14 +7,14 @@ describe("circular references", () => {
     const foo = { text: "foo", self: null as any };
     foo.self = foo;
 
-    const encoded = coder.encode(foo);
+    const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual({
       text: "foo",
       self: { $$ref: "/" },
     });
 
-    const decoded = coder.decode<any>(encoded);
+    const decoded = defaultCoder.decode<any>(encoded);
 
     expect(decoded).toEqual(foo);
     expect(decoded.self).toBe(decoded);
@@ -26,7 +26,7 @@ describe("circular references", () => {
 
     foo.bar = bar;
 
-    expect(coder.encode(foo)).toEqual({
+    expect(defaultCoder.encode(foo)).toEqual({
       foo: "foo",
       bar: { foo: { $$ref: "/" } },
     });
@@ -39,14 +39,14 @@ describe("circular references", () => {
     foo.bar = bar;
     bar.foo = foo;
 
-    const encoded = coder.encode([foo, bar]);
+    const encoded = defaultCoder.encode([foo, bar]);
 
     expect(encoded).toEqual([
       { bar: { foo: { $$ref: "/0" } } },
       { $$ref: "/0/bar" },
     ]);
 
-    const decoded = coder.decode<any>(encoded);
+    const decoded = defaultCoder.decode<any>(encoded);
 
     expect(decoded).toEqual([foo, bar]);
 
@@ -66,7 +66,7 @@ describe("circular references", () => {
       ["bar", foo],
     ]);
 
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
 
     expect(encoded).toEqual({
       $$Map: [
@@ -75,7 +75,7 @@ describe("circular references", () => {
       ],
     });
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual(input);
     expect(decoded.get("foo")).toBe(decoded.get("bar"));
@@ -87,10 +87,10 @@ describe("referential equalities", () => {
     const a = { foo: "foo" };
 
     const input = [a, a];
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
     expect(encoded).toEqual([{ foo: "foo" }, { $$ref: "/0" }]);
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual([{ foo: "foo" }, { foo: "foo" }]);
     expect(decoded[0]).toBe(decoded[1]);
@@ -151,13 +151,13 @@ describe("dots in paths or keys", () => {
     const foo = { foo: "foo" };
     const bar = { "bar/bar": [foo, foo] };
 
-    const encoded = coder.encode(bar);
+    const encoded = defaultCoder.encode(bar);
 
     expect(encoded).toEqual({
       "bar/bar": [{ foo: "foo" }, { $$ref: "/bar~1bar/0" }],
     });
 
-    const decoded = coder.decode<typeof bar>(encoded);
+    const decoded = defaultCoder.decode<typeof bar>(encoded);
     expect(decoded).toEqual(bar);
     expect(decoded["bar/bar"][0]).toBe(decoded["bar/bar"][1]);
   });
@@ -170,10 +170,10 @@ describe("misc", () => {
     const bar = { arr };
 
     const input = [foo, bar];
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
     expect(encoded).toEqual([{ arr: [1, 2, 3] }, { arr: { $$ref: "/0/arr" } }]);
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
     expect(decoded).toEqual([foo, foo]);
     expect(decoded[0].arr).toBe(decoded[1].arr);
     expect(decoded[0].arr).toBe(decoded[1].arr);
@@ -188,13 +188,13 @@ describe("misc", () => {
       selected: option1,
     };
 
-    const encoded = coder.encode(select);
+    const encoded = defaultCoder.encode(select);
     expect(encoded).toEqual({
       options: [{ value: "foo" }, { value: "foo" }],
       selected: { $$ref: "/options/0" },
     });
 
-    const decoded = coder.decode<typeof select>(encoded);
+    const decoded = defaultCoder.decode<typeof select>(encoded);
     expect(decoded).toEqual(select);
     expect(decoded.selected).toBe(decoded.options[0]);
   });
@@ -203,10 +203,10 @@ describe("misc", () => {
     const regex = /foo/;
 
     const input = [regex, regex];
-    const encoded = coder.encode(input);
+    const encoded = defaultCoder.encode(input);
     expect(encoded).toEqual([{ $$RegExp: "foo" }, { $$ref: "/0" }]);
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
     expect(decoded[0]).toBe(decoded[1]);
   });
@@ -217,10 +217,10 @@ describe("preserve references", () => {
     const foo = { foo: "foo" };
     const input = [foo, foo];
 
-    const encoded = coder.encode(input, { preserveReferences: false });
+    const encoded = defaultCoder.encode(input, { preserveReferences: false });
     expect(encoded).toEqual([{ foo: "foo" }, { foo: "foo" }]);
 
-    const decoded = coder.decode<typeof input>(encoded);
+    const decoded = defaultCoder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
     expect(decoded[0]).not.toBe(decoded[1]);
   });

@@ -14,12 +14,17 @@ const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
   getIsCoderType,
 );
 
-export class Coder {
-  private typesMap = new Map<string, CoderType>(
-    DEFAULT_TYPES.map((type) => [type.name, type]),
-  );
+function createTypesMap(types: CoderType[]) {
+  return new Map<string, CoderType>(types.map((type) => [type.name, type]));
+}
 
-  private registeredClasses = new WeakSet<AnyCodableClass<any>>();
+export class Coder {
+  private readonly typesMap = new Map<string, CoderType>();
+  private readonly registeredClasses = new WeakSet<AnyCodableClass<any>>();
+
+  constructor(extraTypes: CoderType[] = []) {
+    this.typesMap = createTypesMap([...DEFAULT_TYPES, ...(extraTypes ?? [])]);
+  }
 
   getTypeByName(name: string): CoderType | null {
     return this.typesMap.get(name) ?? null;
@@ -105,6 +110,10 @@ export class Coder {
     return this.decode(JSON.parse(value));
   }
 
+  copy<T>(value: T): T {
+    return this.decode<T>(this.encode(value));
+  }
+
   getMatchingTypeFor(input: unknown): CoderType | null {
     for (const type of this.typesMap.values()) {
       if (type.canHandle(input)) {
@@ -116,24 +125,32 @@ export class Coder {
   }
 
   get isDefault() {
-    return this === coder;
+    return this === defaultCoder;
   }
 }
 
-export const coder = new Coder();
+export function createCoder(extraTypes: CoderType[] = []) {
+  return new Coder(extraTypes);
+}
+
+export const defaultCoder = createCoder();
 
 export function decode<T>(value: JSONValue): T {
-  return coder.decode(value);
+  return defaultCoder.decode(value);
 }
 
 export function encode<T>(value: T): JSONValue {
-  return coder.encode(value);
+  return defaultCoder.encode(value);
 }
 
 export function stringify<T>(value: T): string {
-  return coder.stringify(value);
+  return defaultCoder.stringify(value);
 }
 
 export function parse<T>(value: string): T {
-  return coder.parse(value);
+  return defaultCoder.parse(value);
+}
+
+export function copy<T>(value: T): T {
+  return defaultCoder.copy(value);
 }
