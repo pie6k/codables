@@ -42,7 +42,7 @@ const EditorContainer = styled.div`
 const OutputContainer = styled.div`
   flex: 1;
   background: #fafbfc;
-  overflow: auto;
+  overflow: hidden;
   font-size: 14px;
 `;
 
@@ -57,16 +57,9 @@ const ErrorMessage = styled.div`
   font-size: 14px;
 `;
 
-const OutputCode = styled.pre`
-  background: #ffffff;
-  padding: 16px;
-  margin: 0;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 14px;
-  line-height: 1.5;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
+const ErrorContainer = styled.div`
+  padding: 12px;
+  background: #fafbfc;
 `;
 
 const defaultCode = `// Welcome to playground!
@@ -188,8 +181,31 @@ function App() {
       <Panel>
         <PanelHeader>Encoded</PanelHeader>
         <OutputContainer>
-          {error && <ErrorMessage>{error}</ErrorMessage>}
-          <OutputCode>{output || "// Output will appear here..."}</OutputCode>
+          {error ? (
+            <ErrorContainer>
+              <ErrorMessage>{error}</ErrorMessage>
+            </ErrorContainer>
+          ) : (
+            <Editor
+              height="100%"
+              defaultLanguage="json"
+              value={output || "// Output will appear here..."}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: "on",
+                roundedSelection: false,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                readOnly: true,
+                wordWrap: "on",
+                folding: true,
+                lineDecorationsWidth: 0,
+                lineNumbersMinChars: 3,
+              }}
+            />
+          )}
         </OutputContainer>
       </Panel>
     </Container>
