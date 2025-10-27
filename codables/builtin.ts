@@ -1,9 +1,10 @@
-import { decodeSpecialNumber, getSpecialNumberType } from "./utils/numbers";
 import {
+  TypedArrayTypeName,
   getIsTypedArray,
   getTypedArrayConstructor,
   getTypedArrayType,
 } from "./utils/typedArrays";
+import { decodeSpecialNumber, getSpecialNumberType } from "./utils/numbers";
 import { getSymbolKey, removeUndefinedProperties } from "./utils/misc";
 
 import { createCoderType } from "./CoderType";
@@ -145,11 +146,13 @@ export const $$symbol = createCoderType(
 export const $$typedArray = createCoderType(
   "typedArray",
   getIsTypedArray,
-  (value) => ({
-    type: getTypedArrayType(value),
-    data: [...value],
-  }),
-  ({ type, data }) => new (getTypedArrayConstructor(type))(data),
+  (value) => {
+    return [getTypedArrayType(value), ...value] as const;
+  },
+  (array) => {
+    const [type, ...data] = array;
+    return new (getTypedArrayConstructor(type))(data);
+  },
 );
 
 /**

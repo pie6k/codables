@@ -5,11 +5,13 @@
   "packageManager": "yarn@4.6.0",
   "workspaces": {
     "packages": [
-      "codables"
+      "codables",
+      "playground"
     ]
   },
   "scripts": {
-    "codables": "yarn workspace codables"
+    "codables": "yarn workspace codables",
+    "playground": "yarn workspace playground"
   },
   "devDependencies": {
     "prettier": "^3.6.2"

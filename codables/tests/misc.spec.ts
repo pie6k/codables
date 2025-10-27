@@ -48,7 +48,6 @@ describe("primitive objects", () => {
   it("String", () => {
     const input = String("foo");
     const encoded = coder.encode(input);
-    console.log(encoded);
     expect(encoded).toEqual("foo");
     const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
