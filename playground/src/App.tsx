@@ -283,9 +283,64 @@ const examples: Record<string, string> = {
 
 const defaultCode = examples["Built-in Types"];
 
+// Basic sanitization for eval
+function sanitizeCode(code: string): string {
+  // Remove potentially dangerous patterns
+  const dangerousPatterns = [
+    /import\s*\(/gi, // Dynamic imports
+    /require\s*\(/gi, // Node.js require
+    /process\./gi, // Node.js process object
+    /global\./gi, // Global object access
+    /window\./gi, // Window object access
+    /document\./gi, // Document object access
+    /fetch\s*\(/gi, // Fetch API
+    /XMLHttpRequest/gi, // XHR
+    /WebSocket/gi, // WebSocket
+    /localStorage/gi, // LocalStorage
+    /sessionStorage/gi, // SessionStorage
+    /indexedDB/gi, // IndexedDB
+    /navigator\./gi, // Navigator object
+    /location\./gi, // Location object
+    /history\./gi, // History object
+    /alert\s*\(/gi, // Alert
+    /confirm\s*\(/gi, // Confirm
+    /prompt\s*\(/gi, // Prompt
+    /eval\s*\(/gi, // Nested eval
+    /Function\s*\(/gi, // Function constructor
+    /setTimeout\s*\(/gi, // setTimeout
+    /setInterval\s*\(/gi, // setInterval
+    /clearTimeout/gi, // clearTimeout
+    /clearInterval/gi, // clearInterval
+  ];
+
+  let sanitized = code;
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(sanitized)) {
+      throw new Error(
+        `Code contains potentially dangerous pattern: ${pattern.source}`,
+      );
+    }
+  }
+
+  // Additional checks
+  if (sanitized.includes("__proto__") || sanitized.includes("prototype")) {
+    throw new Error("Code contains prototype manipulation");
+  }
+
+  if (sanitized.includes("constructor")) {
+    throw new Error("Code contains constructor access");
+  }
+
+  return sanitized;
+}
+
 async function getResultForCode(code: string) {
+  // Sanitize the code before evaluation
+  const sanitizedCode = sanitizeCode(code);
+
   const coder = new Coder();
-  const result = eval(`(function() { ${code} })()`);
+  const result = eval(`(function() { ${sanitizedCode} })()`);
   const startTime = performance.now();
   const encoded = coder.encode(result);
   const endTime = performance.now();
