@@ -96,7 +96,7 @@ export const $$undefined = createCoderType(
 );
 
 export const $$bigInt = createCoderType(
-  "bigInt",
+  "bigint",
   (value) => typeof value === "bigint",
   (bigInt) => bigInt.toString(),
   (string) => BigInt(string),
@@ -144,7 +144,7 @@ export const $$symbol = createCoderType(
 );
 
 export const $$typedArray = createCoderType(
-  "typedArray",
+  "typed-array",
   getIsTypedArray,
   (value) => {
     return [getTypedArrayType(value), ...value] as const;
@@ -168,7 +168,7 @@ export const $$num = createCoderType(
 );
 
 export const $$urlSearchParams = createCoderType(
-  "urlSearchParams",
+  "url-search-params",
   (value) => value instanceof URLSearchParams,
   (urlSearchParams) => urlSearchParams.toString(),
   (string) => new URLSearchParams(string),

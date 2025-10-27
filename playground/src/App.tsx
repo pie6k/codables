@@ -10,18 +10,52 @@ import styled from "styled-components";
 
 const EDITOR_FONT_SIZE = 13;
 
+// Shared style constants
+const MONACO_FONT_FAMILY =
+  "Roboto Mono, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
+const MONACO_BACKGROUND = "#1e1e1e";
+const MONACO_TEXT_COLOR = "#d4d4d4";
+
+// Shared Monaco editor styles
+const monacoEditorStyles = `
+  .monaco-editor {
+    height: 100% !important;
+    width: 100% !important;
+    font-family: ${MONACO_FONT_FAMILY} !important;
+    font-size: ${EDITOR_FONT_SIZE}px !important;
+    background: ${MONACO_BACKGROUND} !important;
+    color: ${MONACO_TEXT_COLOR} !important;
+  }
+  
+  .monaco-editor .loading {
+    font-family: ${MONACO_FONT_FAMILY} !important;
+    font-size: ${EDITOR_FONT_SIZE}px !important;
+    color: ${MONACO_TEXT_COLOR} !important;
+    background: ${MONACO_BACKGROUND} !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+    width: 100% !important;
+  }
+`;
+
 // Shared Monaco editor options
 const sharedEditorOptions = {
   minimap: { enabled: false },
   fontSize: EDITOR_FONT_SIZE,
-  fontFamily:
-    "Roboto Mono, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace",
+  fontFamily: MONACO_FONT_FAMILY,
   roundedSelection: false,
   scrollBeyondLastLine: false,
   automaticLayout: true,
   tabSize: 2,
   theme: "vs-dark",
   lineNumbers: "off" as const,
+};
+
+// Ensure Monaco theme is set on load
+const handleEditorDidMount = (_editor: any, monaco: any) => {
+  monaco.editor.setTheme("vs-dark");
 };
 
 const Container = styled.div`
@@ -86,13 +120,23 @@ const ExampleButton = styled.button`
 const EditorContainer = styled.div`
   flex: 1;
   position: relative;
+  font-family: ${MONACO_FONT_FAMILY};
+  font-size: ${EDITOR_FONT_SIZE}px;
+  background: ${MONACO_BACKGROUND};
+  color: ${MONACO_TEXT_COLOR};
+
+  ${monacoEditorStyles}
 `;
 
 const OutputContainer = styled.div`
   flex: 1;
-  background: #1e1e1e;
+  background: ${MONACO_BACKGROUND};
   overflow: hidden;
+  font-family: ${MONACO_FONT_FAMILY};
   font-size: ${EDITOR_FONT_SIZE}px;
+  color: ${MONACO_TEXT_COLOR};
+
+  ${monacoEditorStyles}
 `;
 
 const ErrorMessage = styled.div`
@@ -322,6 +366,7 @@ function App() {
             defaultLanguage="javascript"
             value={code}
             onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
             options={{
               ...sharedEditorOptions,
             }}
@@ -342,6 +387,7 @@ function App() {
             height="100%"
             defaultLanguage="json"
             value={output || "// Output will appear here..."}
+            onMount={handleEditorDidMount}
             options={{
               ...sharedEditorOptions,
               readOnly: true,
