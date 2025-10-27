@@ -1,7 +1,11 @@
-import { useCallback, useState } from "react";
+import * as prettierPluginBabel from "prettier/plugins/babel";
+import * as prettierPluginEstree from "prettier/plugins/estree";
+
+import { useCallback, useEffect, useState } from "react";
 
 import { Editor } from "@monaco-editor/react";
 import { encode } from "codables";
+import prettier from "prettier/standalone";
 import styled from "styled-components";
 
 const Container = styled.div`
@@ -98,29 +102,56 @@ return {
   select,
 }`;
 
-function getResultForCode(code: string) {
+async function getResultForCode(code: string) {
   const result = eval(`(function() { ${code} })()`);
   const encoded = encode(result);
 
-  return JSON.stringify(encoded, null, 2);
+  const jsonString = JSON.stringify(encoded);
+
+  try {
+    // Format the JSON with Prettier using Babel parser
+    const formatted = await prettier.format(jsonString, {
+      parser: "json",
+      plugins: [
+        //
+        prettierPluginBabel,
+        // @ts-ignore
+        prettierPluginEstree,
+      ],
+      printWidth: 50,
+      tabWidth: 2,
+      useTabs: false,
+    });
+
+    return formatted;
+  } catch (error) {
+    // If Prettier fails, fall back to basic JSON.stringify
+    console.warn("Prettier formatting failed:", error);
+    return JSON.stringify(encoded, null, 2);
+  }
 }
 
 function App() {
   const [code, setCode] = useState(defaultCode);
-  const [output, setOutput] = useState(() => getResultForCode(code));
+  const [output, setOutput] = useState("");
   const [error, setError] = useState("");
 
-  const evaluateCode = useCallback((inputCode: string) => {
+  const evaluateCode = useCallback(async (inputCode: string) => {
     try {
       setError("");
       // Encode the result using codables
-      const encoded = getResultForCode(inputCode);
+      const encoded = await getResultForCode(inputCode);
       setOutput(encoded);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setOutput("");
     }
   }, []);
+
+  // Initialize output with default code
+  useEffect(() => {
+    evaluateCode(defaultCode);
+  }, [evaluateCode]);
 
   const handleEditorChange = useCallback(
     (value: string | undefined) => {
