@@ -328,10 +328,6 @@ function sanitizeCode(code: string): string {
     throw new Error("Code contains prototype manipulation");
   }
 
-  if (sanitized.includes("constructor")) {
-    throw new Error("Code contains constructor access");
-  }
-
   return sanitized;
 }
 
@@ -345,6 +341,11 @@ async function getResultForCode(code: string) {
   const encoded = coder.encode(result);
   const endTime = performance.now();
   const encodeTime = endTime - startTime;
+
+  function decodeBack() {
+    const decoded = coder.decode(encoded);
+    return decoded;
+  }
 
   const jsonString = JSON.stringify(encoded);
 
@@ -363,12 +364,19 @@ async function getResultForCode(code: string) {
       useTabs: false,
     });
 
-    return [formatted, encodeTime] as const;
+    return [formatted, encodeTime, decodeBack] as const;
   } catch (error) {
     // If Prettier fails, fall back to basic JSON.stringify
     console.warn("Prettier formatting failed:", error);
-    return [JSON.stringify(encoded, null, 2), encodeTime] as const;
+    return [JSON.stringify(encoded, null, 2), encodeTime, decodeBack] as const;
   }
+}
+
+const alertShown = new Set<string>();
+function showAlertOnce(message: string) {
+  if (alertShown.has(message)) return;
+  alertShown.add(message);
+  alert(message);
 }
 
 function App() {
@@ -376,19 +384,39 @@ function App() {
   const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [encodeTime, setEncodeTime] = useState<number | null>(null);
+  const [decodeBack, setDecodeBack] = useState<{
+    decodeBack: () => any;
+  } | null>(null);
+
+  function handleDecodeBack() {
+    if (!decodeBack) return;
+
+    const startTime = performance.now();
+    const decoded = decodeBack.decodeBack();
+    const endTime = performance.now();
+    const decodeTime = endTime - startTime;
+
+    console.info(`Decode back took ${decodeTime.toFixed(2)}ms`);
+    console.info(decoded);
+
+    showAlertOnce(`Decoded result is logged to the console`);
+  }
 
   const evaluateCode = useCallback(async (inputCode: string) => {
     try {
       // Encode the result using codables
-      const [encoded, encodeTime] = await getResultForCode(inputCode);
+      const [encoded, encodeTime, decodeBack] =
+        await getResultForCode(inputCode);
 
       setOutput(encoded);
       setEncodeTime(encodeTime);
+      setDecodeBack({ decodeBack });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setOutput("");
       setEncodeTime(null);
+      setDecodeBack(null);
     }
   }, []);
 
@@ -453,6 +481,9 @@ function App() {
                 : `${encodeTime.toFixed(2)}ms`}
               )
             </TimingDisplay>
+          )}
+          {decodeBack && (
+            <ExampleButton onClick={handleDecodeBack}>Decode</ExampleButton>
           )}
         </PanelHeader>
         <OutputContainer>

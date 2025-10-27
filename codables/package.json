@@ -1,7 +1,58 @@
 {
   "name": "codables",
   "version": "0.0.1",
+  "description": "High-performance, type-safe JSON serialization library that extends JSON to support complex JavaScript types including Date, BigInt, Map, Set, RegExp, Symbol, typed arrays, circular references, and custom classes.",
   "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts"
+    }
+  },
+  "files": [
+    "index.ts",
+    "*.ts",
+    "utils/",
+    "tests/"
+  ],
+  "keywords": [
+    "json",
+    "serialization",
+    "typescript",
+    "date",
+    "bigint",
+    "map",
+    "set",
+    "regexp",
+    "symbol",
+    "circular-references",
+    "decorators",
+    "class-serialization",
+    "typed-arrays",
+    "url",
+    "error-serialization",
+    "reference-preservation",
+    "superjson-alternative",
+    "full-stack",
+    "nextjs",
+    "remix",
+    "api-serialization"
+  ],
+  "author": {
+    "name": "Adam Pietrasiak",
+    "email": "adam@pietrasiak.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pie6k/codables.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pie6k/codables/issues"
+  },
+  "homepage": "https://github.com/pie6k/codables#readme",
   "scripts": {
     "test": "vitest",
     "test:watch": "vitest --watch"

@@ -20,10 +20,10 @@ describe("decorators", () => {
 
     const encoded = coder.encode(foo);
 
-    expect(encoded).toEqual({ $$Foo: { foo: "foo", bar: { $$set: ["bar"] } } });
+    expect(encoded).toEqual({ $$Foo: { foo: "foo", bar: { $$Set: ["bar"] } } });
 
     const decoded = coder.decode({
-      $$Foo: { foo: "foo", bar: { $$set: ["bar"] } },
+      $$Foo: { foo: "foo", bar: { $$Set: ["bar"] } },
     });
 
     expect(decoded).toEqual(foo);
@@ -55,11 +55,11 @@ describe("decorators", () => {
     const encoded = coder.encode(foo);
 
     expect(encoded).toEqual({
-      $$Foo: { foo: "foo", baz: "baz", qux: { $$set: ["qux"] } },
+      $$Foo: { foo: "foo", baz: "baz", qux: { $$Set: ["qux"] } },
     });
 
     const decoded = coder.decode<Foo>({
-      $$Foo: { foo: "foo", baz: "baz", qux: { $$set: ["qux"] } },
+      $$Foo: { foo: "foo", baz: "baz", qux: { $$Set: ["qux"] } },
     });
 
     expect(decoded).not.toEqual(foo);
@@ -97,6 +97,38 @@ describe("decorators", () => {
     const decoded = coder.decode<Foo>({ $$Foo: { a: "a", aa: "aa" } });
 
     expect(decoded).toEqual(foo);
+  });
+});
+
+describe("constructor is called", () => {
+  it("should call the constructor", () => {
+    @codableClass("Foo")
+    class Foo {
+      foo: string;
+
+      @codable()
+      bar!: string;
+
+      constructor() {
+        this.foo = "foo";
+      }
+    }
+
+    const coder = new Coder();
+
+    coder.register(Foo);
+
+    const foo = new Foo();
+    foo.bar = "bar";
+
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({ $$Foo: { bar: "bar" } });
+
+    const decoded = coder.decode<Foo>(encoded);
+
+    expect(decoded).toEqual(foo);
+    expect(decoded.foo).toBe("foo");
   });
 });
 

@@ -69,9 +69,9 @@ describe("circular references", () => {
     const encoded = coder.encode(input);
 
     expect(encoded).toEqual({
-      $$map: [
+      $$Map: [
         ["foo", { foo: "foo" }],
-        ["bar", { $$ref: "/$$map/0/1" }],
+        ["bar", { $$ref: "/$$Map/0/1" }],
       ],
     });
 
@@ -131,10 +131,10 @@ describe("custom types", () => {
 
     expect(encoded).toEqual({
       $$User: {
-        $$map: [
+        $$Map: [
           ["A", { name: "A" }],
           ["B", { name: "B" }],
-          ["AA", { $$ref: "/$$User/$$map/0/1" }],
+          ["AA", { $$ref: "/$$User/$$Map/0/1" }],
         ],
       },
     });
@@ -204,7 +204,7 @@ describe("misc", () => {
 
     const input = [regex, regex];
     const encoded = coder.encode(input);
-    expect(encoded).toEqual([{ $$regexp: "foo" }, { $$ref: "/0" }]);
+    expect(encoded).toEqual([{ $$RegExp: "foo" }, { $$ref: "/0" }]);
 
     const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);

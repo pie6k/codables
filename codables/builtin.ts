@@ -144,13 +144,15 @@ export const $$symbol = createCoderType(
 );
 
 export const $$typedArray = createCoderType(
-  "typed-array",
+  "typedArray",
   getIsTypedArray,
   (value) => {
-    return [getTypedArrayType(value), ...value] as const;
+    return {
+      type: getTypedArrayType(value),
+      data: [...value],
+    } as const;
   },
-  (array) => {
-    const [type, ...data] = array;
+  ({ type, data }) => {
     return new (getTypedArrayConstructor(type))(data);
   },
 );
