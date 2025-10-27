@@ -8,18 +8,41 @@ import { Editor } from "@monaco-editor/react";
 import prettier from "prettier/standalone";
 import styled from "styled-components";
 
+const EDITOR_FONT_SIZE = 13;
+
+// Shared Monaco editor options
+const sharedEditorOptions = {
+  minimap: { enabled: false },
+  fontSize: EDITOR_FONT_SIZE,
+  fontFamily:
+    "Roboto Mono, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace",
+  roundedSelection: false,
+  scrollBeyondLastLine: false,
+  automaticLayout: true,
+  tabSize: 2,
+  theme: "vs-dark",
+  lineNumbers: "off" as const,
+};
+
 const Container = styled.div`
   display: flex;
   height: 100vh;
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    sans-serif;
+  background: #1e1e1e;
+  color: #d4d4d4;
 `;
 
 const Panel = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e1e4e8;
+  border-right: 1px solid #3c3c3c;
 
   &:last-child {
     border-right: none;
@@ -27,34 +50,36 @@ const Panel = styled.div`
 `;
 
 const PanelHeader = styled.div`
-  padding: 12px 16px;
-  background: #f6f8fa;
-  border-bottom: 1px solid #e1e4e8;
+  padding: 8px 16px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #3c3c3c;
   font-weight: 600;
-  font-size: 14px;
+  font-size: ${EDITOR_FONT_SIZE + 2}px;
   display: flex;
   align-items: center;
   gap: 12px;
+  color: #cccccc;
+  min-height: 36px;
 `;
 
 const ExampleButton = styled.button`
-  background: #ffffff;
-  border: 1px solid #d1d5da;
+  background: #3c3c3c;
+  border: none;
   border-radius: 6px;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: ${EDITOR_FONT_SIZE - 1}px;
   font-weight: 500;
-  color: #24292f;
+  color: #cccccc;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: inherit;
 
   &:hover {
-    background: #f6f8fa;
-    border-color: #0366d6;
+    background: #4a4a4a;
   }
 
   &:active {
-    background: #e1e4e8;
+    background: #2a2a2a;
   }
 `;
 
@@ -65,31 +90,34 @@ const EditorContainer = styled.div`
 
 const OutputContainer = styled.div`
   flex: 1;
-  background: #fafbfc;
+  background: #1e1e1e;
   overflow: hidden;
-  font-size: 14px;
+  font-size: ${EDITOR_FONT_SIZE}px;
 `;
 
 const ErrorMessage = styled.div`
-  color: #d73a49;
-  background: #ffeef0;
-  border: 1px solid #f97583;
+  color: #f48771;
+  background: #5a1a1a;
+  border: 1px solid #8b4513;
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 12px;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 14px;
+  font-size: ${EDITOR_FONT_SIZE}px;
 `;
 
 const ErrorContainer = styled.div`
   padding: 12px;
-  background: #fafbfc;
+  background: #1e1e1e;
 `;
 
 const BUILT_IN_TYPES = `// Some of the built-in JavaScript types that get encoded
 
+const item = { foo: 1 };
+
 return {
   date: new Date("2025-01-01T00:00:00.000Z"),
+  regexp2: /hello world/,
   regexp: /hello world/gi,
   error: new Error("Something went wrong", { cause: "404" }),
   url: new URL("https://example.com/path?query=value"),
@@ -99,9 +127,10 @@ return {
   undefined: undefined,
   // None of those are handled by normal JSON.stringify
   specialNumbers: [Infinity, -Infinity, -0, NaN],
-  typedArray: new Uint8Array([1, 2, 3, 4, 5]),
+  someData: new Uint8Array([1, 2, 3, 4, 5]),
   set: new Set([1, 2, 3]),
-  map: new Map([[1, 1], [2, 2]])
+  map: new Map([[1, 1], [2, 2]]),
+  sameRefs: [item, item, item]
 }`;
 
 const CIRCULAR_REFERENCES = `// Objects with circular references
@@ -237,14 +266,14 @@ async function getResultForCode(code: string) {
 function App() {
   const [code, setCode] = useState(defaultCode);
   const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const evaluateCode = useCallback(async (inputCode: string) => {
     try {
-      setError("");
       // Encode the result using codables
       const encoded = await getResultForCode(inputCode);
       setOutput(encoded);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setOutput("");
@@ -254,7 +283,7 @@ function App() {
   // Initialize output with default code
   useEffect(() => {
     evaluateCode(defaultCode);
-  }, [evaluateCode]);
+  }, []);
 
   const handleEditorChange = useCallback(
     (value: string | undefined) => {
@@ -294,13 +323,7 @@ function App() {
             value={code}
             onChange={handleEditorChange}
             options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: "on",
-              roundedSelection: false,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              tabSize: 2,
+              ...sharedEditorOptions,
             }}
           />
         </EditorContainer>
@@ -309,31 +332,25 @@ function App() {
       <Panel>
         <PanelHeader>Encoded</PanelHeader>
         <OutputContainer>
-          {error ? (
+          {error && (
             <ErrorContainer>
               <ErrorMessage>{error}</ErrorMessage>
             </ErrorContainer>
-          ) : (
-            <Editor
-              height="100%"
-              defaultLanguage="json"
-              value={output || "// Output will appear here..."}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: "on",
-                roundedSelection: false,
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                readOnly: true,
-                wordWrap: "on",
-                folding: true,
-                lineDecorationsWidth: 0,
-                lineNumbersMinChars: 3,
-              }}
-            />
           )}
+
+          <Editor
+            height="100%"
+            defaultLanguage="json"
+            value={output || "// Output will appear here..."}
+            options={{
+              ...sharedEditorOptions,
+              readOnly: true,
+              wordWrap: "off",
+              folding: true,
+              lineDecorationsWidth: 0,
+              lineNumbersMinChars: 3,
+            }}
+          />
         </OutputContainer>
       </Panel>
     </Container>
