@@ -21,7 +21,7 @@ function getIsValidDate(date: Date): boolean {
 }
 
 export const $$date = createCoderType(
-  "date",
+  "Date",
   (value) => value instanceof Date,
   (date) => {
     if (!getIsValidDate(date)) return null;
@@ -36,21 +36,21 @@ export const $$date = createCoderType(
 );
 
 export const $$set = createCoderType(
-  "set",
+  "Set",
   (value) => value instanceof Set,
   (set) => [...set],
   (array) => new Set(array),
 );
 
 export const $$map = createCoderType(
-  "map",
+  "Map",
   (value) => value instanceof Map,
   (map) => [...map.entries()],
   (entries) => new Map(entries),
 );
 
 export const $$error = createCoderType(
-  "error",
+  "Error",
   (value) => value instanceof Error,
   (error: Error) => {
     const extraProperties = getErrorExtraProperties(error) ?? undefined;
@@ -96,14 +96,14 @@ export const $$undefined = createCoderType(
 );
 
 export const $$bigInt = createCoderType(
-  "bigint",
+  "BigInt",
   (value) => typeof value === "bigint",
   (bigInt) => bigInt.toString(),
   (string) => BigInt(string),
 );
 
 export const $$regexp = createCoderType(
-  "regexp",
+  "RegExp",
   (value) => value instanceof RegExp,
   ({ source, flags }) => {
     if (flags) return [source, flags] as const;
@@ -122,7 +122,7 @@ export const $$regexp = createCoderType(
 );
 
 export const $$url = createCoderType(
-  "url",
+  "URL",
   (value) => value instanceof URL,
   (url) => url.toString(),
   (string) => new URL(string),
@@ -131,7 +131,7 @@ export const $$url = createCoderType(
 const symbolsRegistry = new Map<string, symbol>();
 
 export const $$symbol = createCoderType(
-  "symbol",
+  "Symbol",
   (value) => typeof value === "symbol",
   (symbol) => {
     const symbolKey = getSymbolKey(symbol);
@@ -168,7 +168,7 @@ export const $$num = createCoderType(
 );
 
 export const $$urlSearchParams = createCoderType(
-  "url-search-params",
+  "URLSearchParams",
   (value) => value instanceof URLSearchParams,
   (urlSearchParams) => urlSearchParams.toString(),
   (string) => new URLSearchParams(string),

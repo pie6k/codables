@@ -96,6 +96,13 @@ const PanelHeader = styled.div`
   min-height: 36px;
 `;
 
+const TimingDisplay = styled.span`
+  font-size: ${EDITOR_FONT_SIZE}px;
+  font-weight: 400;
+  color: #888888;
+  font-family: ${MONACO_FONT_FAMILY};
+`;
+
 const ExampleButton = styled.button`
   background: #3c3c3c;
   border: none;
@@ -163,7 +170,7 @@ return {
   date: new Date("2025-01-01T00:00:00.000Z"),
   regexp2: /hello world/,
   regexp: /hello world/gi,
-  error: new Error("Something went wrong", { cause: "404" }),
+  error: new Error("Something went wrong", { cause: 404 }),
   url: new URL("https://example.com/path?query=value"),
   urlSearchParams: new URLSearchParams("query=value&another=value"),
   bigint: 1234567890123456789n,
@@ -174,7 +181,8 @@ return {
   someData: new Uint8Array([1, 2, 3, 4, 5]),
   set: new Set([1, 2, 3]),
   map: new Map([[1, 1], [2, 2]]),
-  sameRefs: [item, item, item]
+  sameRefs: [item, item, item],
+  sparsedArray: [0,,,0]
 }`;
 
 const CIRCULAR_REFERENCES = `// Objects with circular references
@@ -261,12 +269,10 @@ const computer = new Product("3", new Map([["USD", 199.99]]));
 const userA = new User("A", new Set([tv, computer]));
 const userB = new User("B", new Set([tv, phone]));
 
-const data = {
+return {
   products: [tv, phone, computer],
   users: [userA, userB],
-};
-
-return data;`;
+};`;
 
 const examples: Record<string, string> = {
   "Built-in Types": BUILT_IN_TYPES,
@@ -280,7 +286,10 @@ const defaultCode = examples["Built-in Types"];
 async function getResultForCode(code: string) {
   const coder = new Coder();
   const result = eval(`(function() { ${code} })()`);
+  const startTime = performance.now();
   const encoded = coder.encode(result);
+  const endTime = performance.now();
+  const encodeTime = endTime - startTime;
 
   const jsonString = JSON.stringify(encoded);
 
@@ -299,11 +308,11 @@ async function getResultForCode(code: string) {
       useTabs: false,
     });
 
-    return formatted;
+    return [formatted, encodeTime] as const;
   } catch (error) {
     // If Prettier fails, fall back to basic JSON.stringify
     console.warn("Prettier formatting failed:", error);
-    return JSON.stringify(encoded, null, 2);
+    return [JSON.stringify(encoded, null, 2), encodeTime] as const;
   }
 }
 
@@ -311,16 +320,20 @@ function App() {
   const [code, setCode] = useState(defaultCode);
   const [output, setOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [encodeTime, setEncodeTime] = useState<number | null>(null);
 
   const evaluateCode = useCallback(async (inputCode: string) => {
     try {
       // Encode the result using codables
-      const encoded = await getResultForCode(inputCode);
+      const [encoded, encodeTime] = await getResultForCode(inputCode);
+
       setOutput(encoded);
+      setEncodeTime(encodeTime);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setOutput("");
+      setEncodeTime(null);
     }
   }, []);
 
@@ -375,7 +388,18 @@ function App() {
       </Panel>
 
       <Panel>
-        <PanelHeader>Encoded</PanelHeader>
+        <PanelHeader>
+          Encoded
+          {encodeTime !== null && (
+            <TimingDisplay>
+              (
+              {encodeTime < 1
+                ? `${encodeTime.toFixed(2)}ms`
+                : `${encodeTime.toFixed(2)}ms`}
+              )
+            </TimingDisplay>
+          )}
+        </PanelHeader>
         <OutputContainer>
           {error && (
             <ErrorContainer>
