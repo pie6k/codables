@@ -1,0 +1,238 @@
+import { Callout } from 'nextra/components';
+
+# Integrations
+
+Codables integrates seamlessly with common web development patterns. Here are practical examples for different use cases.
+
+## Local Storage
+
+Create a type-safe wrapper for localStorage that handles complex types:
+
+```typescript
+import { stringify, parse } from "codables";
+
+class LocalStorageValue<T> {
+  constructor(private key: string) {}
+
+  get(): T | null {
+    const stored = localStorage.getItem(this.key);
+    if (!stored) return null;
+    
+    try {
+      return parse(stored);
+    } catch {
+      return null;
+    }
+  }
+
+  set(value: T): void {
+    localStorage.setItem(this.key, stringify(value));
+  }
+
+  remove(): void {
+    localStorage.removeItem(this.key);
+  }
+}
+
+// Usage
+const userPrefs = new LocalStorageValue<{
+  theme: string;
+  lastLogin: Date;
+  favorites: Set<string>;
+}>("user-preferences");
+
+userPrefs.set({
+  theme: "dark",
+  lastLogin: new Date(),
+  favorites: new Set(["react", "typescript"])
+});
+
+const prefs = userPrefs.get();
+// prefs.lastLogin instanceof Date === true
+// prefs.favorites instanceof Set === true
+```
+
+## HTTP APIs
+
+Send complex data structures over HTTP with full type preservation:
+
+```typescript
+import { stringify, parse } from "codables";
+
+// API client with Codables integration
+class ApiClient {
+  async post<T>(url: string, data: T): Promise<T> {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return parse(await response.json());
+  }
+
+  async get<T>(url: string): Promise<T> {
+    const response = await fetch(url);
+    return parse(await response.json());
+  }
+}
+
+// Usage
+const api = new ApiClient();
+
+const gameState = {
+  players: new Set([
+    { name: "Alice", score: 100, lastActive: new Date() },
+    { name: "Bob", score: 150, lastActive: new Date() }
+  ]),
+  createdAt: new Date(),
+  settings: new Map([["difficulty", "hard"]])
+};
+
+// Send complex data
+const savedState = await api.post("/api/game-state", gameState);
+// All types are preserved on the server and returned
+```
+
+## File Persistence
+
+Save rich data formats to disk:
+
+```typescript
+import { writeFileSync, readFileSync } from "fs";
+import { stringify, parse } from "codables";
+
+class FileStorage<T> {
+  constructor(private filePath: string) {}
+
+  save(data: T): void {
+    writeFileSync(this.filePath, stringify(data), "utf8");
+  }
+
+  load(): T | null {
+    try {
+      const content = readFileSync(this.filePath, "utf8");
+      return parse(content);
+    } catch {
+      return null;
+    }
+  }
+}
+
+// Usage
+const projectStorage = new FileStorage<{
+  name: string;
+  createdAt: Date;
+  files: Map<string, { content: string; modified: Date }>;
+}>("./project.json");
+
+const project = {
+  name: "My Project",
+  createdAt: new Date(),
+  files: new Map([
+    ["index.ts", { content: "console.info('hello')", modified: new Date() }]
+  ])
+};
+
+projectStorage.save(project);
+const loaded = projectStorage.load();
+// All types preserved: Date, Map, etc.
+```
+
+## State Management
+
+Integrate with state management libraries:
+
+```typescript
+import { createStore } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import { stringify, parse } from "codables";
+
+interface AppState {
+  user: { name: string; loginDate: Date } | null;
+  cache: Map<string, any>;
+  settings: Set<string>;
+}
+
+const useAppStore = createStore<AppState>()(
+  subscribeWithSelector((set, get) => ({
+    user: null,
+    cache: new Map(),
+    settings: new Set(),
+
+    // Actions
+    setUser: (user: AppState["user"]) => set({ user }),
+    addToCache: (key: string, value: any) => 
+      set(state => ({ 
+        cache: new Map(state.cache).set(key, value) 
+      })),
+    
+    // Persistence
+    save: () => {
+      const state = get();
+      localStorage.setItem("app-state", stringify(state));
+    },
+    
+    load: () => {
+      const stored = localStorage.getItem("app-state");
+      if (stored) {
+        const state = parse(stored);
+        set(state);
+      }
+    }
+  }))
+);
+```
+
+## Database Serialization
+
+Store complex objects in databases that only support JSON:
+
+```typescript
+import { stringify, parse } from "codables";
+
+// Database model with Codables
+class DatabaseModel {
+  constructor(private db: any) {}
+
+  async save<T>(table: string, id: string, data: T): Promise<void> {
+    await this.db.collection(table).doc(id).set({
+      data: stringify(data),
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  async load<T>(table: string, id: string): Promise<T | null> {
+    const doc = await this.db.collection(table).doc(id).get();
+    if (!doc.exists) return null;
+    
+    return parse(doc.data().data);
+  }
+}
+
+// Usage
+const db = new DatabaseModel(firebaseDb);
+
+const gameSession = {
+  id: "session-123",
+  players: new Map([
+    ["player1", { name: "Alice", score: 100, joinedAt: new Date() }]
+  ]),
+  createdAt: new Date(),
+  settings: new Set(["multiplayer", "hard-mode"])
+};
+
+await db.save("game-sessions", "session-123", gameSession);
+const loaded = await db.load("game-sessions", "session-123");
+// All complex types preserved
+```
+
+<Tip>
+These integration patterns work with any JavaScript environment - browser, Node.js, or edge runtimes. Codables handles the serialization complexity so you can focus on your application logic.
+</Tip>

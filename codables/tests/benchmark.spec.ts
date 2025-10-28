@@ -1,53 +1,56 @@
 import { Coder, defaultCoder } from "../Coder";
+import { GenerateDataOptions, generateData } from "./generate";
 import { deserialize, serialize } from "superjson";
 
 import { JSONValue } from "../types";
 import { copyJSON } from "../utils/json";
-import data from "./test-data.json";
-import { generateData } from "./generate";
+import jsonData from "./test-data.json";
 
-const RUN_BENCHMARK = true;
+const RUN_BENCHMARK = false;
 
-function testComplexData(sameReferences: boolean) {
-  describe(`complex data ${sameReferences ? "with" : "without"} same references`, () => {
-    describe("encode", () => {
-      const data = generateData({ sameReferences });
-      it("codables", () => {
+function benchmarkComplexData(name: string, data: any, repeats: number = 10) {
+  describe(`${name} (${repeats} repeats)`, () => {
+    const coderEncoded = defaultCoder.encode(data);
+    const superjsonEncoded = serialize(data);
+
+    it("encode - codables", () => {
+      for (let i = 0; i < repeats; i++) {
         const encoded = defaultCoder.encode(data);
+      }
 
-        // console.dir(encoded, { depth: null });
-      });
+      // console.dir(encoded, { depth: null });
+    });
 
-      it("codables (no preserve references)", () => {
+    it("encode - superjson", () => {
+      for (let i = 0; i < repeats; i++) {
+        const encoded = serialize(data);
+      }
+    });
+
+    it("encode - codables (no preserve references)", () => {
+      for (let i = 0; i < repeats; i++) {
         const encoded = defaultCoder.encode(data, {
           preserveReferences: false,
         });
+      }
 
-        // console.dir(encoded, { depth: null });
-      });
-
-      it("superjson", () => {
-        const encoded = serialize(data);
-      });
+      // console.dir(encoded, { depth: null });
     });
 
-    describe("decode", () => {
-      const data = generateData({ sameReferences });
+    // console.dir(coderEncoded, { depth: null });
 
-      const coderEncoded = defaultCoder.encode(data);
-      const superjsonEncoded = serialize(data);
-
-      // console.dir(coderEncoded, { depth: null });
-
-      it("codables", () => {
+    it("decode - codables", () => {
+      for (let i = 0; i < repeats; i++) {
         const decoded = defaultCoder.decode(coderEncoded);
-        // expect(decoded).toEqual(data);
-      });
+      }
+      // expect(decoded).toEqual(data);
+    });
 
-      it("superjson", () => {
+    it("decode - superjson", () => {
+      for (let i = 0; i < repeats; i++) {
         const decoded = deserialize(superjsonEncoded);
-        // expect(decoded).toEqual(data);
-      });
+      }
+      // expect(decoded).toEqual(data);
     });
   });
 }
@@ -55,48 +58,21 @@ function testComplexData(sameReferences: boolean) {
 describe.runIf(RUN_BENCHMARK)("benchmark", () => {
   if (!RUN_BENCHMARK) return;
 
-  describe("standard, big json", () => {
-    describe("encode", () => {
-      const coder = new Coder();
-      it("codables", () => {
-        const encoded = coder.encode(data);
-        // console.dir(encoded, { depth: null });
-      });
-
-      it("codables (no preserve references)", () => {
-        const encoded = coder.encode(data, { preserveReferences: false });
-        // console.dir(encoded, { depth: null });
-      });
-
-      it("superjson", () => {
-        const encoded = serialize(data);
-      });
-
-      it("json.stringify", () => {
-        const encoded = JSON.stringify(data);
-      });
-
-      it("copy", () => {
-        const encoded = copyJSON(data as JSONValue);
-      });
-    });
-
-    describe("decode", () => {
-      const coder = new Coder();
-      const coderEncoded = coder.encode(data);
-      const superjsonEncoded = serialize(data);
-      it("codables", () => {
-        const decoded = coder.decode(coderEncoded);
-        // expect(decoded).toEqual(data);
-      });
-
-      it("superjson", () => {
-        const decoded = deserialize(superjsonEncoded);
-        // expect(decoded).toEqual(data);
-      });
-    });
+  describe("json data", () => {
+    benchmarkComplexData("big data with no custom types", jsonData, 10);
   });
 
-  testComplexData(false);
-  testComplexData(true);
+  describe("complex data", () => {
+    benchmarkComplexData("small data [2 x 3]", generateData({ i: 2, j: 3, sameReferences: true }), 500);
+    benchmarkComplexData("avg data [10 x 10]", generateData({ i: 10, j: 10, sameReferences: true }), 70);
+    benchmarkComplexData(
+      "avg data no repeated references [10 x 10]",
+      generateData({ i: 10, j: 10, sameReferences: false }),
+      70,
+    );
+    benchmarkComplexData("large data [30 x 20]", generateData({ i: 30, j: 20, sameReferences: true }), 15);
+    benchmarkComplexData("huge data [50 x 40]", generateData({ i: 50, j: 40, sameReferences: true }), 3);
+  });
+
+  // benchmarkComplexData(true);
 });

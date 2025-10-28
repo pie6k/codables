@@ -1,1 +1,132 @@
+import { Callout } from 'nextra/components'
+
 # Quick Start
+
+Welcome to Codables - a high-performance, extensible JSON serializer with support for complex types and a framework that makes coding serializable classes much easier.
+
+## What is Codables?
+
+Codables solves two main problems:
+
+1. **JSON Serialization**: Extends JSON to handle JavaScript types that JSON can't serialize (`Date`, `BigInt`, `Map`, `Set`, etc.) with excellent performance
+
+[Open playground](https://pie6k.github.io/codables/) to test your own data.
+
+[JSON Serialization Overview](/docs/json-serialization)
+
+2. **Declarative Serialization**: Eliminates the dual-format problem by letting you work with your classes naturally while seamlessly persisting and transmitting them
+
+[Declarative Serialization Overview](/docs/declarative-serialization)
+
+## Quick Examples
+
+### JSON Serialization
+```typescript
+import { encode, decode } from "codables";
+
+const data = {
+  date: new Date("2025-01-01"),
+  set: new Set(["a", "b", "c"]),
+  map: new Map([["key", "value"]]),
+};
+
+const encoded = encode(data);
+// { date: { $$Date: "2025-01-01T00:00:00.000Z" }, set: { $$Set: ["a", "b", "c"] }, map: { $$Map: [["key", "value"]] } }
+
+const decoded = decode(encoded);
+// decoded.date instanceof Date === true
+```
+
+### Declarative Class Serialization
+```typescript
+import { codableClass, codable, Coder } from "codables";
+
+// Mark your classes as codable with `@codableClass("ClassName")`
+@codableClass("Player")
+class Player {
+  // Mark properties as codable with `@codable()`
+  @codable() name: string;
+  @codable() score: number;
+
+  // Constructor is optional and not needed for Codables to work.
+  constructor(data: Pick<Player, "name" | "score">) {
+    this.name = data.name;
+    this.score = data.score;
+  }
+}
+
+@codableClass("GameState")
+class GameState {
+  @codable() players: Set<Player> = new Set();
+  @codable() createdAt = new Date();
+  @codable() activePlayer: Player | null = null;
+
+  // Custom methods work like normal.
+  addPlayer(player: Player) {
+    this.players.add(player);
+    this.activePlayer = player;
+  }
+}
+
+// Create a custom coder instance that is aware of your classes.
+const coder = new Coder([GameState]);
+
+// Create your instances like normal.
+const gameState = new GameState();
+gameState.addPlayer(new Player({ name: "Alice", score: 100 }));
+
+
+const encoded = coder.encode(gameState);
+const decoded = coder.decode<GameState>(encoded);
+// All types and references preserved!
+```
+
+Above will be serialized as:
+```json
+{
+  $$GameState: [
+    {
+      players: {
+        $$Set: [{ $$Player: [{ name: "Foo", score: 100 }] }],
+      },
+      createdAt: { $$Date: "2025-11-27T23:00:00.000Z" },
+      activePlayer: { $$ref: "/$$GameState/0/players/$$Set/0" },
+    },
+  ],
+}
+```
+
+## Key Features
+
+- **🚀 High Performance**: ~3x faster encoding and ~2x faster or comparable (if using reference equality) decoding than SuperJSON
+- **🔒 Type Safety**: Full TypeScript support with compile-time checking
+- **🔄 Reference Preservation**: Handles circular references and maintains object identity
+- **🛡️ Security**: Built-in protection against prototype pollution
+- **🎯 Zero Boilerplate**: No manual conversion logic or separate data interfaces
+- **🔧 Extensible**: Easy to add custom serialization types
+- **📦 Lightweight**: Modular imports - use only what you need
+
+## Try It Out
+
+Experiment with Codables in the [playground](https://pie6k.github.io/codables/) to see how different types are encoded and test circular reference handling.
+
+## Installation
+
+```bash
+npm install codables
+# or
+yarn add codables
+# or
+pnpm add codables
+```
+
+## Next Steps
+
+- **[JSON Serialization](/docs/json-serialization)**: Learn about built-in types, custom types, and reference handling
+- **[Declarative Serialization](/docs/declarative-serialization)**: Master the decorator-based class serialization system
+- **[Recipes](/docs/recipes)**: See real-world examples and integrations
+- **[Performance](/docs/performance)**: Understand performance characteristics and optimization strategies
+
+<Callout type="info">
+For simple JSON serialization needs, Codables is lightweight and only imports what you need. Advanced features like class decorators are available from `codables/decorators` when you need them.
+</Callout>

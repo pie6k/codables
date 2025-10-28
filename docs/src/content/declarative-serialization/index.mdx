@@ -1,0 +1,129 @@
+import { Callout } from 'nextra/components';
+
+# Declarative Serialization
+
+The Codables framework eliminates the dual-format problem by allowing you to work with your classes naturally while seamlessly persisting and transmitting them. No more maintaining separate `EntityData` interfaces!
+
+## The Problem
+
+Traditional approaches require maintaining two formats:
+
+```typescript
+// Your classes
+class Player {
+  constructor(public name: string, public score: number) {}
+}
+
+class GameState {
+  constructor(public players: Set<Player>, public createdAt: Date) {}
+}
+
+// Separate data interfaces (boilerplate!)
+interface PlayerData {
+  name: string;
+  score: number;
+}
+
+interface GameStateData {
+  players: PlayerData[]; // Set becomes array
+  createdAt: string;    // Date becomes string
+}
+
+// Manual conversion logic (more boilerplate!)
+function gameStateToData(state: GameState): GameStateData {
+  return {
+    players: Array.from(state.players).map(p => ({
+      name: p.name,
+      score: p.score
+    })),
+    createdAt: state.createdAt.toISOString()
+  };
+}
+
+function dataToGameState(data: GameStateData): GameState {
+  return new GameState(
+    new Set(data.players.map(p => new Player(p.name, p.score))),
+    new Date(data.createdAt)
+  );
+}
+```
+
+## The Solution
+
+With Codables, your classes are your data format:
+
+```typescript
+import { codableClass, codable, Coder } from "codables";
+
+@codableClass("Player")
+class Player {
+  @codable() name: string;
+  @codable() score: number;
+
+  constructor(data: Pick<Player, "name" | "score">) {
+    this.name = data.name;
+    this.score = data.score;
+  }
+}
+
+@codableClass("GameState")
+class GameState {
+  @codable() players: Set<Player> = new Set();
+  @codable() createdAt = new Date();
+  @codable() activePlayer: Player | null = null;
+
+  addPlayer(player: Player) {
+    this.players.add(player);
+    this.activePlayer = player;
+  }
+}
+
+// That's it! No separate interfaces, no conversion logic
+const coder = new Coder([GameState]);
+const gameState = new GameState();
+gameState.addPlayer(new Player({ name: "Alice", score: 100 }));
+
+// Serialize directly
+const encoded = coder.encode(gameState);
+// Deserialize back to your classes
+const decoded = coder.decode<GameState>(encoded);
+```
+
+## Key Benefits
+
+- **Single source of truth**: Your classes define both runtime behavior and serialization format
+- **Type safety**: Full TypeScript support with compile-time checking
+- **Zero boilerplate**: No manual conversion logic or separate data interfaces
+- **Automatic handling**: Complex types (`Date`, `Set`, `Map`) work seamlessly
+- **Reference preservation**: Object identity and circular references maintained
+
+## How It Works
+
+1. **Mark classes** with `@codableClass("TypeName")`
+2. **Mark properties** with `@codable()` that should be serialized
+3. **Create a Coder** with your classes: `new Coder([YourClass])`
+4. **Encode/decode** naturally: `coder.encode(instance)` and `coder.decode<Type>(data)`
+
+<Callout type="info">
+Only properties marked with `@codable()` are serialized. Private properties and methods are ignored, keeping your serialization focused and secure.
+</Callout>
+
+## Type Safety
+
+The framework provides full type safety:
+
+```typescript
+const decoded = coder.decode<GameState>(encoded);
+// decoded is fully typed as GameState
+// decoded.players is Set<Player>
+// decoded.createdAt is Date
+// decoded.activePlayer is Player | null
+
+// TypeScript will catch errors at compile time
+decoded.players.add("invalid"); // ❌ Type error
+decoded.createdAt.getTime();    // ✅ Works perfectly
+```
+
+<Callout type="tip">
+This framework is perfect for complex applications where you need to serialize rich object graphs while maintaining type safety and avoiding the maintenance burden of dual formats.
+</Callout>

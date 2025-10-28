@@ -14,18 +14,20 @@ function getRandomThing(i: number, sameReferences: boolean) {
   return RANDOM_THINGS[i % RANDOM_THINGS.length]();
 }
 
-interface GenerateDataOptions {
+export interface GenerateDataOptions {
   sameReferences?: boolean;
+  i?: number;
+  j?: number;
 }
 
 export function generateData(options: GenerateDataOptions = {}) {
-  const { sameReferences = false } = options;
+  const { sameReferences = false, i: iMax = 500, j: jMax = 50 } = options;
 
   const data = [];
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < iMax; i++) {
     let nested1 = [];
     let nested2 = [];
-    for (let j = 0; j < 10; j++) {
+    for (let j = 0; j < jMax; j++) {
       nested1[j] = {
         createdAt: getRandomThing(i + j, sameReferences),
         updatedAt: getRandomThing(i + j + 1, sameReferences),

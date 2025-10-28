@@ -19,7 +19,7 @@ export const $$externalReference = createCoderType(
   },
   ({ key, isOptional }, context) => {
     if (!context.externalReferencesMap.has(key)) {
-      if (isOptional) return null;
+      if (isOptional) return void 0;
 
       throw new Error(`External reference "${key}" not found`);
     }

@@ -1,12 +1,8 @@
-import {
-  TypedArrayTypeName,
-  getIsTypedArray,
-  getTypedArrayConstructor,
-  getTypedArrayType,
-} from "./utils/typedArrays";
+import { TypedArrayTypeName, getIsTypedArray, getTypedArrayConstructor, getTypedArrayType } from "./utils/typedArrays";
 import { decodeSpecialNumber, getSpecialNumberType } from "./utils/numbers";
 import { getSymbolKey, removeUndefinedProperties } from "./utils/misc";
 
+import { EncodeContext } from "./EncodeContext";
 import { createCoderType } from "./CoderType";
 import { getErrorExtraProperties } from "./utils/errors";
 
@@ -52,13 +48,16 @@ export const $$map = createCoderType(
 export const $$error = createCoderType(
   "Error",
   (value) => value instanceof Error,
-  (error: Error) => {
+  (error: Error, context: EncodeContext) => {
+    const shouldIncludeErrorStack = context.options?.includeErrorStack ?? false;
+
     const extraProperties = getErrorExtraProperties(error) ?? undefined;
     const name = error.name && error.name !== "Error" ? error.name : undefined;
     const cause = error.cause;
     const message = error.message;
+    const stack = shouldIncludeErrorStack ? error.stack : undefined;
 
-    if (!extraProperties && !name && !cause) {
+    if (!extraProperties && !name && !cause && !stack) {
       return message;
     }
 
@@ -67,14 +66,19 @@ export const $$error = createCoderType(
       name,
       cause,
       properties: extraProperties,
+      stack,
     });
   },
   (messageOrData) => {
     if (typeof messageOrData === "string") return new Error(messageOrData);
 
-    const { message, name, cause, properties } = messageOrData;
+    const { message, name, cause, properties, stack } = messageOrData;
 
     const error = new Error(message, { cause });
+
+    if (stack) {
+      error.stack = stack;
+    }
 
     if (name && name !== "Error") {
       error.name = name;
@@ -163,8 +167,7 @@ export const $$typedArray = createCoderType(
  */
 export const $$num = createCoderType(
   "num",
-  (value): value is number =>
-    typeof value === "number" && !!getSpecialNumberType(value),
+  (value): value is number => typeof value === "number" && !!getSpecialNumberType(value),
   getSpecialNumberType,
   decodeSpecialNumber,
 );

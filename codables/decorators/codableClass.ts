@@ -61,7 +61,7 @@ export function codableClass<T extends AnyClass>(
     const keysFromOptions = resolveKeys(maybeOptions?.keys ?? []);
 
     const encoder: ClassEncoder<T> = maybeOptions?.encode ?? createDefaultClassEncoder(Class, keysFromOptions);
-    const decoder: ClassDecoder<T> = createClassDecoder(Class, isUsingDefaultEncoder);
+    const decoder: ClassDecoder<T> = createClassDecoder(Class, isUsingDefaultEncoder, keysFromOptions);
 
     const type = createCoderType(
       name,

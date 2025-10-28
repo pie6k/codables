@@ -1,0 +1,246 @@
+import { Callout } from 'nextra/components';
+
+# External References
+
+External references allow you to reference objects that exist outside your serialized data but are essential for your class to function properly. 
+
+For example, your classes might depend on some Authentication provides or SDKs to connect to servers, etc.
+
+They are assigned to your classes, but of course they are not meant to be serialized.
+
+## Basic External References
+
+```typescript
+import { external, codableClass, codable, Coder } from "codables";
+
+// External context that won't be serialized
+class GameContext {
+  constructor(
+    public gameId: string,
+    public serverUrl: string,
+    public playerCount: number
+  ) {}
+}
+
+@codableClass("GameState")
+class GameState {
+  @external("gameContext")
+  context!: GameContext;
+
+  @codable() players: Set<string> = new Set();
+  @codable() score: number = 0;
+
+  constructor(data: Pick<GameState, "players" | "score" | "context">) {
+    this.players = data.players;
+    this.score = data.score;
+    this.context = data.context;
+  }
+}
+
+const coder = new Coder([GameState]);
+const context = new GameContext("game-123", "https://api.example.com", 4);
+// When you manually create your instances, external property works like a regular property.
+const gameState = new GameState({ players: new Set(["player1", "player2"]), score: 100, context });
+
+// External properties are not included in the encoded data. Only a reference to the external property is included.
+const encoded = coder.encode(gameState);
+// { $$GameState: [{ players: { $$Set: ["player1", "player2"] }, score: 100, context: { $$external: { key: "gameContext", isOptional: false } } }] }
+
+const decoded = coder.decode<GameState>(encoded, { 
+  externalReferences: { gameContext: context } 
+});
+// decoded.context === context (same reference)
+```
+
+<Callout type="info">
+Call to `.decode` will throw an error if the external reference is needed, but not provided.
+</Callout>
+
+## Optional External References
+
+Mark external references as optional when they might not always be available:
+
+```typescript
+@codableClass("User")
+class User {
+  @external("authService", true) // Optional
+  authService?: AuthService;
+
+  @codable() name: string;
+  @codable() email: string;
+
+  constructor(data: Pick<User, "name" | "email">) {
+    this.name = data.name;
+    this.email = data.email;
+  }
+}
+
+const coder = new Coder([User]);
+const user = new User({ name: "John", email: "john@example.com" });
+
+const encoded = coder.encode(user);
+// { $$User: [{ name: "John", email: "john@example.com", authService: { $$external: { key: "authService", isOptional: true } } }] }
+
+// Decode without providing the external reference
+const decoded = coder.decode<User>(encoded, { externalReferences: {} });
+// decoded.authService === undefined (optional reference not provided)
+```
+
+## Multiple External References
+
+Classes can have multiple external references:
+
+```typescript
+@codableClass("Order")
+class Order {
+  @external("userService")
+  userService!: UserService;
+
+  @external("paymentService", true)
+  paymentService?: PaymentService;
+
+  @external("logger")
+  logger!: Logger;
+
+  @codable() orderId: string;
+  @codable() items: string[];
+
+  constructor(data: Pick<Order, "orderId" | "items">) {
+    this.orderId = data.orderId;
+    this.items = data.items;
+  }
+}
+
+const coder = new Coder([Order]);
+const order = new Order({ orderId: "order-123", items: ["item1", "item2"] });
+
+// Set external references
+order.userService = userService;
+order.logger = logger;
+// paymentService is optional, so we can leave it undefined
+
+const encoded = coder.encode(order);
+const decoded = coder.decode<Order>(encoded, {
+  externalReferences: {
+    userService: userService,
+    logger: logger
+    // paymentService not provided (optional)
+  }
+});
+```
+
+## Real-World Example: Game State
+
+Here's a practical example where external references solve a common problem:
+
+```typescript
+// External dependencies
+class GameMap {
+  constructor(public mapId: string, public tiles: string[][]) {}
+}
+
+class PlayerManager {
+  constructor(public maxPlayers: number) {}
+}
+
+@codableClass("GameSession")
+class GameSession {
+  @external("gameMap")
+  map!: GameMap;
+
+  @external("playerManager")
+  playerManager!: PlayerManager;
+
+  @codable() sessionId: string;
+  @codable() players: Set<string> = new Set();
+  @codable() createdAt: Date;
+
+  constructor(data: Pick<GameSession, "sessionId" | "players" | "createdAt">) {
+    this.sessionId = data.sessionId;
+    this.players = data.players;
+    this.createdAt = data.createdAt;
+  }
+
+  addPlayer(playerId: string) {
+    if (this.players.size >= this.playerManager.maxPlayers) {
+      throw new Error("Game is full");
+    }
+    this.players.add(playerId);
+  }
+
+  getTileAt(x: number, y: number) {
+    return this.map.tiles[y][x];
+  }
+}
+
+// Usage
+const gameMap = new GameMap("map-forest", [["grass", "tree"], ["water", "stone"]]);
+const playerManager = new PlayerManager(4);
+
+const session = new GameSession({
+  sessionId: "session-456",
+  players: new Set(["player1"]),
+  createdAt: new Date()
+});
+
+session.map = gameMap;
+session.playerManager = playerManager;
+
+// Save game state (without the heavy map data)
+const coder = new Coder([GameSession]);
+const encoded = coder.encode(session);
+
+// Load game state (restore external dependencies)
+const decoded = coder.decode<GameSession>(encoded, {
+  externalReferences: {
+    gameMap: gameMap,
+    playerManager: playerManager
+  }
+});
+
+// decoded.map === gameMap (same reference)
+// decoded.playerManager === playerManager (same reference)
+```
+
+## Error Handling
+
+External references throw errors when required references are missing:
+
+```typescript
+const encoded = coder.encode(gameState);
+
+// ❌ Throws error: External reference "gameContext" not found
+const decoded = coder.decode<GameState>(encoded, { externalReferences: {} });
+
+// ✅ Works correctly
+const decoded = coder.decode<GameState>(encoded, { 
+  externalReferences: { gameContext: context } 
+});
+```
+
+## Decorator Conflicts
+
+You cannot use both `@external` and `@codable` on the same property:
+
+```typescript
+@codableClass("Example")
+class Example {
+  // ❌ Error: External decorator cannot be used on codable properties
+  @external("service")
+  @codable()
+  service!: Service;
+
+  // ❌ Error: Codable decorator cannot be used on external properties  
+  @codable()
+  @external("service")
+  service!: Service;
+}
+```
+
+<Callout type="info">
+External references are perfect for dependency injection patterns, avoiding circular dependencies, and keeping your serialized data focused on the essential state while maintaining references to external services or resources.
+</Callout>
+
+<Callout type="tip">
+Use external references when you have objects that are expensive to serialize (like large maps or databases) or when you need to maintain references to singleton services across serialization boundaries.
+</Callout>

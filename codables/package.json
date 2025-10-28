@@ -30,6 +30,7 @@
     "circular-references",
     "decorators",
     "class-serialization",
+    "declarative-serialization",
     "typed-arrays",
     "url",
     "error-serialization",

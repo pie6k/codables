@@ -1,0 +1,132 @@
+import { Callout } from 'nextra/components';
+
+# Security
+
+Codables includes built-in security measures to protect against common vulnerabilities, particularly prototype pollution attacks.
+
+## Prototype Pollution Protection
+
+Codables guards against prototype pollution by filtering out dangerous properties during serialization:
+
+```typescript
+import { encode, decode } from "codables";
+
+// Attempted prototype pollution attack
+const maliciousData = {
+  constructor: {},
+  __proto__: { malicious: true },
+  prototype: { malicious: true }
+};
+
+const encoded = encode(maliciousData);
+// { } - dangerous properties are filtered out
+
+const decoded = decode(encoded);
+// decoded is safe - no prototype pollution occurred
+```
+
+## Forbidden Properties
+
+Codables automatically filters out these dangerous properties:
+
+- `constructor`
+- `__proto__`
+- `prototype`
+
+```typescript
+const data = {
+  safe: "value",
+  constructor: "malicious",
+  __proto__: { malicious: true },
+  prototype: { malicious: true }
+};
+
+const encoded = encode(data);
+// { safe: "value" } - only safe properties are encoded
+
+const decoded = decode(encoded);
+// decoded.safe === "value"
+// decoded.constructor is undefined (filtered out)
+```
+
+## Safe Object Creation
+
+During deserialization, Codables creates objects safely without modifying prototypes:
+
+```typescript
+const maliciousEncoded = {
+  constructor: "malicious",
+  __proto__: { malicious: true }
+};
+
+const decoded = decode(maliciousEncoded);
+// decoded is a plain object with no prototype modifications
+// Object.prototype is unchanged
+```
+
+## Custom Type Safety
+
+Custom types are also protected from prototype pollution:
+
+```typescript
+import { createCoderType, Coder } from "codables";
+
+class SafeClass {
+  constructor(public data: any) {}
+}
+
+const $$safe = createCoderType(
+  "SafeClass",
+  (value) => value instanceof SafeClass,
+  (instance) => instance.data,
+  (data) => new SafeClass(data)
+);
+
+const coder = new Coder([$$safe]);
+
+const maliciousData = {
+  $$SafeClass: {
+    constructor: "malicious",
+    __proto__: { malicious: true }
+  }
+};
+
+const decoded = coder.decode(maliciousData);
+// decoded is a SafeClass instance with safe data
+// No prototype pollution occurs
+```
+
+## Best Practices
+
+1. **Never trust external data**: Always validate input before processing
+2. **Use TypeScript**: Leverage type safety to catch issues at compile time
+3. **Validate schemas**: Consider using schema validation libraries for additional safety
+4. **Sanitize input**: Clean data before serialization when possible
+
+```typescript
+// Example: Validate before encoding
+function safeEncode(data: unknown) {
+  // Validate data structure
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Invalid data type');
+  }
+  
+  // Check for dangerous properties
+  const dangerousKeys = ['constructor', '__proto__', 'prototype'];
+  for (const key of dangerousKeys) {
+    if (key in data) {
+      throw new Error(`Dangerous property detected: ${key}`);
+    }
+  }
+  
+  return encode(data);
+}
+```
+
+<Callout type="warning">
+While Codables provides protection against prototype pollution, always validate and sanitize external data before processing. Security is a layered approach.
+</Callout>
+
+<Callout type="info">
+The security measures in Codables are designed to prevent common attacks while maintaining performance. For applications handling highly sensitive data, consider additional validation layers.
+</Callout>

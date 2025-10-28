@@ -11,10 +11,7 @@ function createUInt8Array(length: number) {
   return array;
 }
 
-function expectSerializeAndDeserialize(
-  value: unknown,
-  encodedShape?: JSONValue,
-) {
+function expectSerializeAndDeserialize(value: unknown, encodedShape?: JSONValue) {
   const encoded = defaultCoder.encode(value);
   if (encodedShape) {
     expect(encoded).toEqual(encodedShape);
@@ -44,10 +41,7 @@ describe("basic", () => {
     expectSerializeAndDeserialize(BigInt(123), { $$BigInt: "123" });
     expectSerializeAndDeserialize(Symbol.for("foo"), { $$Symbol: "foo" });
     expectSerializeAndDeserialize(Symbol("foo"), { $$Symbol: "foo" });
-    expectSerializeAndDeserialize(
-      { foo: undefined },
-      { foo: { $$undefined: null } },
-    );
+    expectSerializeAndDeserialize({ foo: undefined }, { foo: { $$undefined: null } });
     expectSerializeAndDeserialize({
       a: new Int8Array([1, 2]),
       b: new Uint8ClampedArray(3),
@@ -77,10 +71,7 @@ describe("basic", () => {
     expectSerializeAndDeserialize(String("foo"), "foo");
     expectSerializeAndDeserialize(Number(123), 123);
     expectSerializeAndDeserialize(Boolean(true), true);
-    expectSerializeAndDeserialize(
-      [0, , , 0],
-      [0, { $$undefined: null }, { $$undefined: null }, 0],
-    );
+    expectSerializeAndDeserialize([0, , , 0], [0, { $$undefined: null }, { $$undefined: null }, 0]);
 
     expectSerializeAndDeserialize(new URLSearchParams("a=1&b=2"), {
       $$URLSearchParams: "a=1&b=2",
@@ -88,10 +79,9 @@ describe("basic", () => {
   });
 
   it("should encode nested objects", () => {
-    expectSerializeAndDeserialize(
-      new Set([new Date("2025-01-01T00:00:00.000Z")]),
-      { $$Set: [{ $$Date: "2025-01-01T00:00:00.000Z" }] },
-    );
+    expectSerializeAndDeserialize(new Set([new Date("2025-01-01T00:00:00.000Z")]), {
+      $$Set: [{ $$Date: "2025-01-01T00:00:00.000Z" }],
+    });
   });
 });
 
@@ -128,9 +118,7 @@ describe("custom types", () => {
       (logins) => new User(logins),
     );
 
-    expect(
-      coder.encode(new User(new Set([new Date("2025-01-01T00:00:00.000Z")]))),
-    ).toEqual({
+    expect(coder.encode(new User(new Set([new Date("2025-01-01T00:00:00.000Z")])))).toEqual({
       $$User: { $$Set: [{ $$Date: "2025-01-01T00:00:00.000Z" }] },
     });
     expect(
@@ -143,14 +131,7 @@ describe("custom types", () => {
 
 describe("plain json", () => {
   it("serializes to json the same way as normal json", () => {
-    const a: JSONValue = [
-      1,
-      2,
-      3,
-      { foo: "bar" },
-      { baz: false, qux: null, quux: true },
-      { a: 1, b: [4, 5, 6, null] },
-    ];
+    const a: JSONValue = [1, 2, 3, { foo: "bar" }, { baz: false, qux: null, quux: true }, { a: 1, b: [4, 5, 6, null] }];
 
     expect(defaultCoder.encode(a)).toEqual(a);
     expect(defaultCoder.decode(a)).toEqual(a);
@@ -184,22 +165,25 @@ describe("errors", () => {
         (value) => value,
         (value) => value,
       );
-    }).toThrowErrorMatchingInlineSnapshot(
-      `[Error: Coder type "foo" already registered]`,
-    );
+    }).toThrowErrorMatchingInlineSnapshot(`[Error: Coder type "foo" already registered]`);
+  });
+
+  it("should include error stack if includeErrorStack is true", () => {
+    const error = new Error("foo");
+    const encoded: any = defaultCoder.encode(error, { includeErrorStack: true });
+
+    const originalStack = error.stack;
+
+    expect(encoded.$$Error.stack.length).toBeGreaterThan(0);
+
+    const decoded = defaultCoder.decode<typeof error>(encoded);
+    expect(decoded.stack).toBe(originalStack);
   });
 });
 
 describe("stringify/parse", () => {
   it("should stringify and parse the same way as normal json", () => {
-    const a = [
-      1,
-      2,
-      3,
-      { foo: "bar" },
-      { baz: false, qux: null, quux: true },
-      { a: 1, b: [4, 5, 6, null] },
-    ];
+    const a = [1, 2, 3, { foo: "bar" }, { baz: false, qux: null, quux: true }, { a: 1, b: [4, 5, 6, null] }];
     expect(defaultCoder.stringify(a)).toEqual(JSON.stringify(a));
     expect(defaultCoder.parse(defaultCoder.stringify(a))).toEqual(a);
   });
@@ -217,12 +201,8 @@ describe("stringify/parse", () => {
       (value) => value.name,
       (name) => new Foo(name),
     );
-    expect(coder.stringify(new Foo("bar"))).toEqual(
-      JSON.stringify({ $$Foo: "bar" }),
-    );
-    expect(coder.parse(JSON.stringify({ $$Foo: "bar" }))).toEqual(
-      new Foo("bar"),
-    );
+    expect(coder.stringify(new Foo("bar"))).toEqual(JSON.stringify({ $$Foo: "bar" }));
+    expect(coder.parse(JSON.stringify({ $$Foo: "bar" }))).toEqual(new Foo("bar"));
   });
 });
 
@@ -263,9 +243,7 @@ describe("dots in paths", () => {
     const encoded = defaultCoder.encode(foo);
 
     expect(encoded).toEqual({ "foo/bar": { "baz/qux": "quux" } });
-    expect(defaultCoder.decode({ "foo/bar": { "baz/qux": "quux" } })).toEqual(
-      foo,
-    );
+    expect(defaultCoder.decode({ "foo/bar": { "baz/qux": "quux" } })).toEqual(foo);
   });
 
   it("works if path contains explicit \\", () => {
@@ -315,10 +293,9 @@ describe("coding errors", () => {
   it("should encode and decode errors", () => {
     expectSerializeAndDeserialize(new Error("foo"), { $$Error: "foo" });
 
-    expectSerializeAndDeserialize(
-      new Error("foo", { cause: new Error("bar") }),
-      { $$Error: { message: "foo", cause: { $$Error: "bar" } } },
-    );
+    expectSerializeAndDeserialize(new Error("foo", { cause: new Error("bar") }), {
+      $$Error: { message: "foo", cause: { $$Error: "bar" } },
+    });
 
     const error = new Error("named");
     error.name = "CustomError";
@@ -466,9 +443,7 @@ describe("uncodable handling", () => {
     expect(encoded.foo).toBe(input.foo);
   });
   it("throw mode", () => {
-    expect(() =>
-      defaultCoder.encode(input, { unknownInputMode: "throw" }),
-    ).toThrowErrorMatchingInlineSnapshot(
+    expect(() => defaultCoder.encode(input, { unknownInputMode: "throw" })).toThrowErrorMatchingInlineSnapshot(
       `[Error: Not able to encode - no matching type found]`,
     );
   });

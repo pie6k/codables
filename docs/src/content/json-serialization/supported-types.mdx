@@ -1,0 +1,121 @@
+import { Callout } from 'nextra/components';
+
+# Supported Types
+
+Codables automatically handles JavaScript types that standard JSON cannot serialize. Here's a comprehensive table of supported types and their encoded formats:
+
+## Built-in Types
+
+| JavaScript Type | Example |
+|----------------|---------|
+| `Date` | `{ $$Date: "2025-01-01T00:00:00.000Z" }` |
+| `BigInt` | `{ $$BigInt: "1234567890123456789" }` |
+| `Set` | `{ $$Set: ["a", "b", "c"] }` |
+| `Map` | `{ $$Map: [["key", "value"]] }` |
+| `RegExp` | `{ $$RegExp: ["hello", "gi"] }` |
+| `Symbol` | `{ $$Symbol: "test" }` |
+| `URL` | `{ $$URL: "https://example.com/" }` |
+| `URLSearchParams` | `{ $$URLSearchParams: "a=1&b=2" }` |
+| `Error` | See examples below |
+| `undefined` | `{ $$undefined: null }` |
+| Typed Arrays | `{ $$typedArray: { type: "uint8", data: [1, 2, 3] } }` |
+| Special Numbers | `{ $$num: "NaN" }`, `{ $$num: "Infinity" }`, `{ $$num: "-0" }` |
+
+## Examples
+
+### Error Objects
+
+Errors with simple messages are encoded concisely:
+
+```typescript
+const error = new Error("Something went wrong");
+encode(error);
+// { $$Error: "Something went wrong" }
+```
+
+Errors with additional properties preserve all information:
+
+```typescript
+const error = new Error("Database connection failed", { 
+  cause: new Error("Network timeout") 
+});
+error.name = "DatabaseError";
+error.code = "DB_CONNECTION_FAILED";
+
+encode(error);
+// {
+//   $$Error: {
+//     message: "Database connection failed",
+//     name: "DatabaseError", 
+//     cause: { $$Error: "Network timeout" },
+//     properties: { code: "DB_CONNECTION_FAILED" }
+//   }
+// }
+```
+
+<Callout type="tip">
+By default, the error stack is not included in the encoded output. You can include it by passing `includeErrorStack: true` to the `encode` function.
+
+```typescript
+const error = new Error("Something went wrong");
+encode(error, { includeErrorStack: true });
+// { $$Error: { message: "Something went wrong", stack: "Error: Something went wrong\n    at <anonymous>:1:1" } }
+const decodedError = decode<typeof error>(encoded);
+decodedError.stack === error.stack; // true, stack is preserved
+```
+</Callout>
+
+### Regular Expressions
+
+```typescript
+const regex = /hello/gi;
+encode(regex);
+// { $$RegExp: ["hello", "gi"] }
+
+const simpleRegex = /test/;
+encode(simpleRegex);
+// { $$RegExp: "test" }
+```
+
+### Typed Arrays
+
+```typescript
+const uint8Array = new Uint8Array([1, 2, 3]);
+encode(uint8Array);
+// { $$typedArray: { type: "uint8", data: [1, 2, 3] } }
+
+const float64Array = new Float64Array([NaN, 0, Infinity]);
+encode(float64Array);
+// { 
+//   $$typedArray: { 
+//     type: "float64", 
+//     data: [{ $$num: "NaN" }, 0, { $$num: "Infinity" }] 
+//   } 
+// }
+```
+
+### Special Numbers
+
+```typescript
+encode(NaN);        // { $$num: "NaN" }
+encode(Infinity);   // { $$num: "Infinity" }
+encode(-Infinity);  // { $$num: "-Infinity" }
+encode(-0);         // { $$num: "-0" }
+```
+
+## Format Safety
+
+Codables automatically handles cases where your data conflicts with the internal format by escaping:
+
+```typescript
+const data = { $$Set: [1, 2, 3] }; // This would conflict with Set encoding
+encode(data);
+// { "~$$Set": [1, 2, 3] } - automatically escaped
+
+const decoded = decode(encoded);
+// decoded.$$Set === [1, 2, 3] - correctly restored
+```
+
+<Callout type="tip">
+The `~` prefix indicates escaped format keys. Codables handles this automatically during encoding and decoding.
+</Callout>

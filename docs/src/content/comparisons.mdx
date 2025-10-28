@@ -1,0 +1,183 @@
+import { Callout } from 'nextra/components';
+
+# Comparisons
+
+Codables compares favorably to other serialization libraries, particularly SuperJSON, offering better performance and a more comprehensive feature set.
+
+## vs SuperJSON
+
+### Similarities
+- **JSON extension**: Both extend JSON to handle JavaScript types
+- **Type preservation**: Both maintain types through serialization
+- **Reference handling**: Both support circular references
+- **TypeScript support**: Both provide good TypeScript integration
+
+### Key Differences
+
+| Feature | Codables | SuperJSON |
+|---------|----------|-----------|
+| **Performance** | 3-4x faster encoding, 1.5-2x faster decoding | Baseline |
+| **Format** | Tagged format (`{ $$Date: "..." }`) | SuperJSON format (`{ __superjson__: ... }`) |
+| **Class Support** | Built-in decorator framework | Manual serialization required |
+| **Custom Types** | `createCoderType` API | Manual transformer functions |
+| **Reference Preservation** | Automatic with `preserveReferences` option | Always enabled |
+| **Format Safety** | Automatic collision detection and escaping | Manual handling required |
+| **Bundle Size** | Smaller core, modular imports | Monolithic |
+
+### Format Comparison
+
+**SuperJSON format:**
+```json
+{
+  "json": {
+    "date": "2025-01-01T00:00:00.000Z",
+    "set": ["a", "b", "c"]
+  },
+  "meta": {
+    "values": {
+      "date": ["Date"],
+      "set": ["Set"]
+    }
+  }
+}
+```
+
+**Codables format:**
+```json
+{
+  "date": { "$$Date": "2025-01-01T00:00:00.000Z" },
+  "set": { "$$Set": ["a", "b", "c"] }
+}
+```
+
+### Class Serialization
+
+**SuperJSON approach:**
+```typescript
+import { SuperJSON } from "superjson";
+
+class User {
+  constructor(public name: string, public email: string) {}
+}
+
+// Manual transformer registration
+SuperJSON.registerClass(User, {
+  name: "User",
+  allowedProps: ["name", "email"],
+  transformProps: (instance) => ({
+    name: instance.name,
+    email: instance.email
+  }),
+  untransformProps: (props) => new User(props.name, props.email)
+});
+
+const user = new User("John", "john@example.com");
+const serialized = SuperJSON.stringify(user);
+const deserialized = SuperJSON.parse(serialized);
+```
+
+**Codables approach:**
+```typescript
+import { codableClass, codable, Coder } from "codables";
+
+@codableClass("User")
+class User {
+  @codable() name: string;
+  @codable() email: string;
+
+  constructor(data: Pick<User, "name" | "email">) {
+    this.name = data.name;
+    this.email = data.email;
+  }
+}
+
+const coder = new Coder([User]);
+const user = new User({ name: "John", email: "john@example.com" });
+const encoded = coder.encode(user);
+const decoded = coder.decode<User>(encoded);
+```
+
+## vs Other Libraries
+
+### vs `serialize-javascript`
+- **Codables**: Type-safe, handles complex types, preserves references
+- **serialize-javascript**: Function serialization, security concerns, no type safety
+
+### vs `jsondiffpatch`
+- **Codables**: Full serialization, type preservation, class support
+- **jsondiffpatch**: Diff/patch focused, no type preservation
+
+### vs `flatted`
+- **Codables**: Rich type support, class framework, better performance
+- **flatted**: Circular reference only, limited type support
+
+## Migration from SuperJSON
+
+Migrating from SuperJSON is straightforward:
+
+### 1. Update Dependencies
+```bash
+npm uninstall superjson
+npm install codables
+```
+
+### 2. Replace Imports
+```typescript
+// Before
+import { SuperJSON } from "superjson";
+
+// After  
+import { encode, decode, stringify, parse } from "codables";
+```
+
+### 3. Update Serialization Calls
+```typescript
+// Before
+const serialized = SuperJSON.stringify(data);
+const deserialized = SuperJSON.parse(serialized);
+
+// After
+const serialized = stringify(data);
+const deserialized = parse(serialized);
+```
+
+### 4. Migrate Custom Types
+```typescript
+// Before (SuperJSON)
+SuperJSON.registerClass(MyClass, transformer);
+
+// After (Codables)
+const $$myClass = createCoderType(
+  "MyClass",
+  (value) => value instanceof MyClass,
+  (instance) => instance.data,
+  (data) => new MyClass(data)
+);
+const coder = new Coder([$$myClass]);
+```
+
+## When to Choose Codables
+
+Choose Codables when you need:
+
+- **High performance**: 3-4x faster than alternatives
+- **Class serialization**: Built-in decorator framework
+- **Type safety**: Full TypeScript support
+- **Complex data**: Rich type support with reference preservation
+- **Developer experience**: Minimal boilerplate, intuitive API
+
+## When to Choose Alternatives
+
+Consider alternatives when:
+
+- **Simple JSON extension**: SuperJSON might be sufficient for basic needs
+- **Legacy compatibility**: Existing SuperJSON integrations
+- **Minimal bundle**: Very small applications where bundle size matters most
+
+<Callout type="info">
+Codables provides a comprehensive solution that combines the best aspects of existing libraries while offering superior performance and developer experience.
+</Callout>
+
+<Callout type="tip">
+For new projects, Codables offers the best combination of performance, features, and developer experience. For existing SuperJSON projects, migration is straightforward and provides immediate performance benefits.
+</Callout>

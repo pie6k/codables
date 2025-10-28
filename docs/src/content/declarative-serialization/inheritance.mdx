@@ -1,0 +1,195 @@
+import { Callout } from 'nextra/components';
+
+# Inheritance
+
+Codables handles inheritance seamlessly. Only properties marked with `@codable()` are encoded, regardless of which class in the hierarchy they're defined in.
+
+## Basic Inheritance
+
+```typescript
+@codableClass("Animal")
+class Animal {
+  @codable() name: string;
+  @codable() age: number;
+
+  constructor(data: Pick<Animal, "name" | "age">) {
+    this.name = data.name;
+    this.age = data.age;
+  }
+}
+
+@codableClass("Dog")
+class Dog extends Animal {
+  @codable() breed: string;
+  @codable() tricks: Set<string>;
+
+  constructor(data: Pick<Dog, "name" | "age" | "breed" | "tricks">) {
+    super({ name: data.name, age: data.age });
+    this.breed = data.breed;
+    this.tricks = data.tricks;
+  }
+}
+
+const coder = new Coder([Dog]);
+
+const dog = new Dog({
+  name: "Buddy",
+  age: 3,
+  breed: "Golden Retriever", 
+  tricks: new Set(["sit", "stay", "roll over"])
+});
+
+const encoded = coder.encode(dog);
+// { $$Dog: [{ name: "Buddy", age: 3, breed: "Golden Retriever", tricks: { $$Set: ["sit", "stay", "roll over"] } }] }
+
+const decoded = coder.decode<Dog>(encoded);
+// decoded instanceof Dog === true
+// decoded.name === "Buddy" (from parent class)
+// decoded.breed === "Golden Retriever" (from child class)
+```
+
+## Multi-Level Inheritance
+
+Inheritance works across multiple levels:
+
+```typescript
+@codableClass("Vehicle")
+class Vehicle {
+  @codable() make: string;
+  @codable() model: string;
+  @codable() year: number;
+
+  constructor(data: Pick<Vehicle, "make" | "model" | "year">) {
+    this.make = data.make;
+    this.model = data.model;
+    this.year = data.year;
+  }
+}
+
+@codableClass("Car")
+class Car extends Vehicle {
+  @codable() doors: number;
+  @codable() fuelType: string;
+
+  constructor(data: Pick<Car, "make" | "model" | "year" | "doors" | "fuelType">) {
+    super({ make: data.make, model: data.model, year: data.year });
+    this.doors = data.doors;
+    this.fuelType = data.fuelType;
+  }
+}
+
+@codableClass("ElectricCar")
+class ElectricCar extends Car {
+  @codable() batteryCapacity: number;
+  @codable() chargingPorts: Set<string>;
+
+  constructor(data: Pick<ElectricCar, "make" | "model" | "year" | "doors" | "fuelType" | "batteryCapacity" | "chargingPorts">) {
+    super(data);
+    this.batteryCapacity = data.batteryCapacity;
+    this.chargingPorts = data.chargingPorts;
+  }
+}
+
+const coder = new Coder([ElectricCar]);
+
+const tesla = new ElectricCar({
+  make: "Tesla",
+  model: "Model 3",
+  year: 2023,
+  doors: 4,
+  fuelType: "electric",
+  batteryCapacity: 75,
+  chargingPorts: new Set(["Type 2", "CCS"])
+});
+
+const encoded = coder.encode(tesla);
+// All properties from all levels are encoded
+```
+
+## Non-Codable Properties
+
+Properties not marked with `@codable()` are ignored, even in parent classes:
+
+```typescript
+@codableClass("Base")
+class Base {
+  @codable() publicData: string;
+  privateData: string; // Not codable
+
+  constructor(data: Pick<Base, "publicData">) {
+    this.publicData = data.publicData;
+    this.privateData = "secret";
+  }
+}
+
+@codableClass("Derived")
+class Derived extends Base {
+  @codable() additionalData: string;
+
+  constructor(data: Pick<Derived, "publicData" | "additionalData">) {
+    super({ publicData: data.publicData });
+    this.additionalData = data.additionalData;
+  }
+}
+
+const coder = new Coder([Derived]);
+const instance = new Derived({ publicData: "public", additionalData: "extra" });
+
+const encoded = coder.encode(instance);
+// { $$Derived: [{ publicData: "public", additionalData: "extra" }] }
+// privateData is not included
+
+const decoded = coder.decode<Derived>(encoded);
+// decoded.publicData === "public"
+// decoded.additionalData === "extra"
+// decoded.privateData is undefined (not restored)
+```
+
+## Constructor Inheritance
+
+Constructors work naturally with inheritance:
+
+```typescript
+@codableClass("Person")
+class Person {
+  @codable() name: string;
+  @codable() birthDate: Date;
+
+  constructor(data: Pick<Person, "name" | "birthDate">) {
+    this.name = data.name;
+    this.birthDate = data.birthDate;
+  }
+}
+
+@codableClass("Employee")
+class Employee extends Person {
+  @codable() employeeId: string;
+  @codable() department: string;
+
+  constructor(data: Pick<Employee, "name" | "birthDate" | "employeeId" | "department">) {
+    super({ name: data.name, birthDate: data.birthDate });
+    this.employeeId = data.employeeId;
+    this.department = data.department;
+  }
+}
+
+const coder = new Coder([Employee]);
+const employee = new Employee({
+  name: "Jane Doe",
+  birthDate: new Date("1990-01-01"),
+  employeeId: "EMP001",
+  department: "Engineering"
+});
+
+const encoded = coder.encode(employee);
+const decoded = coder.decode<Employee>(encoded);
+// Both parent and child constructors are called correctly
+```
+
+<Callout type="info">
+When decoding, Codables calls the constructor of the most specific class (the one that was encoded), which then calls its parent constructors as needed.
+</Callout>
+
+<Callout type="tip">
+Use inheritance to build rich domain models while keeping serialization simple. Only mark the properties you want to persist with `@codable()`.
+</Callout>

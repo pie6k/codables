@@ -1,0 +1,158 @@
+import { Callout } from 'nextra/components';
+
+# Customization
+
+Codables provides flexible customization options for controlling how your classes are serialized and deserialized.
+
+## Key Mapping
+
+Use the `keys` option to map properties to different names during serialization:
+
+```typescript
+@codableClass("User", { 
+  keys: { 
+    firstName: "first_name", 
+    lastName: "last_name",
+    emailAddress: "email" 
+  } 
+})
+class User {
+  firstName: string;
+  lastName: string;
+  emailAddress: string;
+
+  constructor(data: Pick<User, "firstName" | "lastName" | "emailAddress">) {
+    this.firstName = data.firstName;
+    this.lastName = data.lastName;
+    this.emailAddress = data.emailAddress;
+  }
+}
+
+const coder = new Coder([User]);
+const user = new User({ firstName: "John", lastName: "Doe", emailAddress: "john@example.com" });
+
+const encoded = coder.encode(user);
+// { $$User: [{ first_name: "John", last_name: "Doe", email: "john@example.com" }] }
+
+const decoded = coder.decode<User>(encoded);
+// decoded.firstName === "John" (mapped back correctly)
+```
+
+## Property-Level Key Mapping
+
+You can also map individual properties using the `@codable()` decorator:
+
+```typescript
+@codableClass("Product")
+class Product {
+  @codable("product_id")
+  id: string;
+
+  @codable("product_name")
+  name: string;
+
+  @codable("price_in_cents")
+  price: number;
+
+  constructor(data: Pick<Product, "id" | "name" | "price">) {
+    this.id = data.id;
+    this.name = data.name;
+    this.price = data.price;
+  }
+}
+
+const coder = new Coder([Product]);
+const product = new Product({ id: "prod-123", name: "Widget", price: 1999 });
+
+const encoded = coder.encode(product);
+// { $$Product: [{ product_id: "prod-123", product_name: "Widget", price_in_cents: 1999 }] }
+```
+
+## Combining Key Mappings
+
+Class-level and property-level mappings work together:
+
+```typescript
+@codableClass("Order", { keys: { orderDate: "date", totalAmount: "total" } })
+class Order {
+  @codable("order_id")
+  id: string;
+
+  orderDate: Date;
+  totalAmount: number;
+
+  constructor(data: Pick<Order, "id" | "orderDate" | "totalAmount">) {
+    this.id = data.id;
+    this.orderDate = data.orderDate;
+    this.totalAmount = data.totalAmount;
+  }
+}
+
+const coder = new Coder([Order]);
+const order = new Order({ id: "order-456", orderDate: new Date(), totalAmount: 99.99 });
+
+const encoded = coder.encode(order);
+// { $$Order: [{ order_id: "order-456", date: "2025-01-01T00:00:00.000Z", total: 99.99 }] }
+```
+
+## Custom Encoding/Decoding
+
+For complex customization needs, provide custom encode function.
+
+Encode function must return an array of arguments matching the constructor of your class.
+
+```typescript
+@codableClass("ComplexType", {
+  encode: (instance) => {
+    // Must return an array of arguments matching the constructor of your class.
+    // TypeScript will guard you here
+    return [instance.getSome(), instance.getOther()]
+  }
+})
+class ComplexType {
+  // ... class properties ...
+
+  // Constructor is not memberwise - Codables is not able to know how to construct the instance from the encoded data.
+  constructor(some: string, other: number) {
+    // Custom constructor logic
+  }
+}
+```
+
+## Selective Property Encoding
+
+Use the `keys` array to specify exactly which properties to encode:
+
+```typescript
+@codableClass("SelectiveType", { keys: ["name", "email"] })
+class SelectiveType {
+  name: string;
+  email: string;
+  password: string; // Not encoded
+  internalId: string; // Not encoded
+
+  constructor(data: Pick<SelectiveType, "name" | "email" | "password" | "internalId">) {
+    this.name = data.name;
+    this.email = data.email;
+    this.password = data.password;
+    this.internalId = data.internalId;
+  }
+}
+
+const coder = new Coder([SelectiveType]);
+const instance = new SelectiveType({
+  name: "John",
+  email: "john@example.com", 
+  password: "secret123",
+  internalId: "internal-456"
+});
+
+const encoded = coder.encode(instance);
+// { $$SelectiveType: [{ name: "John", email: "john@example.com" }] }
+// password and internalId are not included
+```
+
+
+<Callout type="info">
+Key mapping works in both directions - during encoding, properties are mapped to the specified keys, and during decoding, the keys are mapped back to the original property names.
+</Callout>

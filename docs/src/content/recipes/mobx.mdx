@@ -1,0 +1,221 @@
+import { Callout } from 'nextra/components';
+
+# MobX Integration
+
+Codables works seamlessly with MobX, allowing you to serialize reactive state while maintaining observability. The `project.spec.ts` test demonstrates a complete example.
+
+## Basic MobX Integration
+
+```typescript
+import { observable, isObservableSet, isObservableMap, autorun, action, computed } from "mobx";
+import { codableClass, codable, Coder, createCoderType, combineDecorators } from "codables";
+
+// Create custom types for MobX observables
+const $$observableSet = createCoderType(
+  "_Set",
+  (value) => isObservableSet(value),
+  (set) => [...set],
+  (items) => observable.set(items)
+);
+
+const $$observableMap = createCoderType(
+  "_Map", 
+  (value) => isObservableMap(value),
+  (map) => [...map],
+  (entries) => observable.map(entries)
+);
+
+// Combine decorators utility
+const $codable = combineDecorators(codable(), observable);
+
+@codableClass("Project")
+class Project {
+  @$codable()
+  accessor scenes: Set<Scene> = new Set([]);
+
+  @$codable()
+  accessor settings: Map<string, string> = new Map([]);
+
+  @action
+  setSetting(key: string, value: string) {
+    this.settings.set(key, value);
+  }
+
+  @action
+  addScene() {
+    const scene = new Scene();
+    this.scenes.add(scene);
+    return scene;
+  }
+}
+
+@codableClass("Scene")
+class Scene {
+  @$codable()
+  accessor zooms: Array<Zoom> = [];
+
+  @computed
+  get duration() {
+    return this.zooms.reduce((acc, zoom) => acc + zoom.duration, 0);
+  }
+
+  @action
+  addZoom(zoom: Zoom) {
+    this.zooms.push(zoom);
+  }
+}
+
+@codableClass("Zoom")
+class Zoom {
+  @$codable()
+  accessor start!: number;
+
+  @$codable()
+  accessor end!: number;
+
+  @$codable()
+  accessor scale!: number;
+
+  @computed
+  get duration() {
+    return this.end - this.start;
+  }
+
+  constructor(input: Pick<Zoom, "start" | "end" | "scale">) {
+    Object.assign(this, input);
+  }
+}
+
+const coder = new Coder([Project, Scene, Zoom, $$observableSet, $$observableMap]);
+```
+
+## Decorator Composition
+
+Use the `combineDecorators` utility to compose multiple decorators:
+
+```typescript
+import { combineDecorators } from "codables";
+
+// Create a composed decorator
+const $codable = combineDecorators(codable(), observable);
+
+@codableClass("ReactiveModel")
+class ReactiveModel {
+  @$codable()
+  accessor data: string = "initial";
+
+  @$codable()
+  accessor items: Set<string> = new Set();
+}
+```
+
+## The `$` Convention
+
+The `$` prefix is a convention to indicate that a decorator is MobX-observable:
+
+```typescript
+// Regular codable (not observable)
+@codable()
+accessor regularProperty: string = "value";
+
+// Observable codable (MobX + Codables)
+@$codable()
+accessor reactiveProperty: string = "value";
+```
+
+## Serialization with MobX
+
+MobX observables serialize and deserialize correctly:
+
+```typescript
+const project = new Project();
+const scene = project.addScene();
+scene.addZoom(new Zoom({ start: 0, end: 1, scale: 1 }));
+
+const encoded = coder.encode(project);
+// {
+//   $$Project: [{
+//     settings: { $$_Map: [] },
+//     scenes: { $$_Set: [{ $$Scene: [{ zooms: [{ $$Zoom: [{ start: 0, end: 1, scale: 1 }] }] }] }] }
+//   }]
+// }
+
+const decoded = coder.decode<Project>(encoded);
+// decoded.scenes is an observable Set
+// decoded.settings is an observable Map
+// All MobX reactivity is preserved
+```
+
+## Reactive Computations
+
+Computed values work correctly after deserialization:
+
+```typescript
+const decoded = coder.decode<Project>(encoded);
+const firstScene = decoded.scenes.values().next().value!;
+
+// Computed values are reactive
+const runner = autorun(() => {
+  console.info(`Scene duration: ${firstScene.duration}`);
+});
+
+// Adding zooms triggers the computed
+firstScene.addZoom(new Zoom({ start: 2, end: 3, scale: 2 }));
+// "Scene duration: 2" is logged
+```
+
+## Actions and State Changes
+
+MobX actions work seamlessly with serialized state:
+
+```typescript
+const decoded = coder.decode<Project>(encoded);
+
+// Actions work correctly
+decoded.setSetting("theme", "dark");
+decoded.addScene();
+
+// State changes are observable
+const runner = autorun(() => {
+  console.info(`Settings count: ${decoded.settings.size}`);
+  console.info(`Scenes count: ${decoded.scenes.size}`);
+});
+
+// Both logs will trigger when actions are called
+```
+
+## Complete Example
+
+Here's the complete working example from the test suite:
+
+```typescript
+const project = new Project();
+const scene = project.addScene();
+scene.addZoom(new Zoom({ start: 0, end: 1, scale: 1 }));
+const zoom2 = new Zoom({ start: 2, end: 3, scale: 2 });
+scene.addZoom(zoom2);
+scene.addZoom(zoom2); // Test reference preservation
+
+const encoded = coder.encode(project);
+const decoded = coder.decode<Project>(encoded);
+
+// Verify reactivity
+const runner = autorun(() => {
+  const firstScene = decoded.scenes.values().next().value!;
+  return [decoded.scenes.size, firstScene.zooms.length, decoded.settings.size];
+});
+
+// All changes trigger reactions
+decoded.addScene();
+decoded.scenes.values().next().value!.addZoom(new Zoom({ start: 4, end: 5, scale: 3 }));
+decoded.setSetting("theme", "dark");
+decoded.setSetting("language", "en");
+```
+
+<Callout type="tip">
+Use `combineDecorators` to create reusable composed decorators. This pattern works with any decorator library, not just MobX.
+</Callout>
+
+<Callout type="info">
+MobX observables maintain their reactivity after serialization and deserialization. Computed values, actions, and reactions all work correctly with the restored state.
+</Callout>

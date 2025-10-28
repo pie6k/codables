@@ -1,0 +1,175 @@
+import { Callout } from 'nextra/components';
+
+# Memberwise Constructor
+
+Codables automatically detects and handles memberwise constructors - constructors that take a single argument matching your class structure (like `Partial<YourClass>`).
+
+## What is a memberwise constructor?
+
+A memberwise constructor is a constructor that takes a single argument matching the structure of your class properties.
+
+For example, the class `User` below takes a single argument with input, where each property of the input has the same name as the property of the class.
+
+```typescript
+@codableClass("User")
+class User {
+  @codable() name: string;
+  @codable() email: string;
+  @codable() age: number;
+
+  constructor(data: Pick<User, "name" | "email" | "age">) {
+    this.name = data.name;
+    this.email = data.email;
+    this.age = data.age;
+  }
+}
+```
+
+<Callout type="info">
+Creating constructors is optional and not required for `@codableClass` to work. Under the hood, Codables will automatically assign properties to the instance.
+
+Constructor might be useful for cases where you want to manually create your instances and have all properties assigned instantly during construction.
+</Callout>
+
+
+## Automatic Detection
+
+When your constructor matches the memberwise pattern, Codables handles it automatically:
+
+```typescript
+@codableClass("User")
+class User {
+  @codable() name: string;
+  @codable() email: string;
+  @codable() age: number;
+
+  // This is a memberwise constructor - Codables detects it automatically
+  constructor(data: Pick<User, "name" | "email" | "age">) {
+    this.name = data.name;
+    this.email = data.email;
+    this.age = data.age;
+  }
+}
+
+const coder = new Coder([User]);
+const user = new User({ name: "John", email: "john@example.com", age: 30 });
+
+const encoded = coder.encode(user);
+// { $$User: [{ name: "John", email: "john@example.com", age: 30 }] }
+
+const decoded = coder.decode<User>(encoded);
+// Constructor is called with: { name: "John", email: "john@example.com", age: 30 }
+```
+
+## TypeScript Type Safety
+
+TypeScript will error if you don't provide proper constructor options:
+
+```typescript
+@codableClass("User")
+class User {
+  @codable() name: string;
+  @codable() email: string;
+
+  // ❌ TypeScript error: constructor requires options but none provided
+  constructor(public name: string, public email: string) {}
+}
+
+// ✅ This works - constructor matches memberwise pattern
+@codableClass("User")
+class User {
+  @codable() name: string;
+  @codable() email: string;
+
+  constructor(data: Pick<User, "name" | "email">) {
+    this.name = data.name;
+    this.email = data.email;
+  }
+}
+```
+
+## Custom Constructor Handling
+
+If your constructor doesn't match the memberwise pattern, you need to provide custom encoding:
+
+```typescript
+@codableClass("User", {
+  encode: (user) => ({ name: user.name, email: user.email }),
+  decode: (data) => new User(data.name, data.email)
+})
+class User {
+  @codable() name: string;
+  @codable() email: string;
+
+  // Non-memberwise constructor
+  constructor(name: string, email: string) {
+    this.name = name;
+    this.email = email;
+  }
+}
+```
+
+## Partial Data
+
+Memberwise constructors work great with partial data:
+
+```typescript
+@codableClass("Config")
+class Config {
+  @codable() theme: string = "light";
+  @codable() language: string = "en";
+  @codable() notifications: boolean = true;
+
+  constructor(data: Partial<Pick<Config, "theme" | "language" | "notifications">> = {}) {
+    Object.assign(this, data);
+  }
+}
+
+const coder = new Coder([Config]);
+
+// Can create with partial data
+const config1 = new Config({ theme: "dark" });
+const config2 = new Config({ language: "es", notifications: false });
+
+// Serialization works seamlessly
+const encoded1 = coder.encode(config1);
+const decoded1 = coder.decode<Config>(encoded1);
+// decoded1.theme === "dark", decoded1.language === "en" (default)
+```
+
+## Complex Memberwise Patterns
+
+Memberwise constructors can handle complex nested structures:
+
+```typescript
+@codableClass("Project")
+class Project {
+  @codable() name: string;
+  @codable() settings: Map<string, string>;
+  @codable() createdAt: Date;
+
+  constructor(data: Pick<Project, "name" | "settings" | "createdAt">) {
+    this.name = data.name;
+    this.settings = data.settings;
+    this.createdAt = data.createdAt;
+  }
+}
+
+const coder = new Coder([Project]);
+const project = new Project({
+  name: "My Project",
+  settings: new Map([["theme", "dark"]]),
+  createdAt: new Date()
+});
+
+const encoded = coder.encode(project);
+// All complex types are handled automatically
+```
+
+<Callout type="info">
+The memberwise constructor pattern is detected by checking if the constructor takes exactly one parameter that matches the structure of your class properties marked with `@codable()`.
+</Callout>
+
+<Callout type="tip">
+Use `Pick<YourClass, \"property1\" | \"property2\">` for explicit type safety, or `Partial<Pick<...>>` for optional properties with defaults.
+</Callout>

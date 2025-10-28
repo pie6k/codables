@@ -10,7 +10,12 @@ describe("getCodablePropertiesForInstance", () => {
       bar = "bar";
     }
 
-    expect(getCodableProperties(Foo)).toEqual(["foo", "bar"]);
+    expect(getCodableProperties(Foo)).toEqual(
+      new Map([
+        ["foo", {}],
+        ["bar", {}],
+      ]),
+    );
   });
 
   it("ignore methods", () => {
@@ -28,7 +33,7 @@ describe("getCodablePropertiesForInstance", () => {
       baz = () => {};
     }
 
-    expect(getCodableProperties(Foo)).toEqual([]);
+    expect(getCodableProperties(Foo)).toEqual(new Map());
   });
 
   it("class with accessors", () => {
@@ -42,12 +47,14 @@ describe("getCodablePropertiesForInstance", () => {
       baz = "baz";
     }
 
-    expect(getCodableProperties(Foo)).toEqual([
-      //
-      "foo",
-      "bar",
-      "baz",
-    ]);
+    expect(getCodableProperties(Foo)).toEqual(
+      new Map([
+        //
+        ["foo", {}],
+        ["bar", {}],
+        ["baz", {}],
+      ]),
+    );
   });
 
   it("class with codable fields", () => {
@@ -57,7 +64,7 @@ describe("getCodablePropertiesForInstance", () => {
       bar = "bar";
     }
 
-    expect(getCodableProperties(Foo)).toEqual(["foo"]);
+    expect(getCodableProperties(Foo)).toEqual(new Map([["foo", {}]]));
   });
 
   it("ignore methods even if marked as codable", () => {
@@ -69,9 +76,7 @@ describe("getCodablePropertiesForInstance", () => {
           return "foo";
         }
       }
-    }).toThrowErrorMatchingInlineSnapshot(
-      `[Error: Codable decorator can only be used on fields or accessors]`,
-    );
+    }).toThrowErrorMatchingInlineSnapshot(`[Error: Codable decorator can only be used on fields or accessors]`);
   });
 
   it("class with codable accessors", () => {
@@ -81,7 +86,7 @@ describe("getCodablePropertiesForInstance", () => {
       accessor bar = "bar";
     }
 
-    expect(getCodableProperties(Foo)).toEqual(["foo"]);
+    expect(getCodableProperties(Foo)).toEqual(new Map([["foo", {}]]));
   });
 
   it("class with codable fields and accessors", () => {
@@ -93,7 +98,12 @@ describe("getCodablePropertiesForInstance", () => {
       baz = "baz";
     }
 
-    expect(getCodableProperties(Foo)).toEqual(["foo", "bar"]);
+    expect(getCodableProperties(Foo)).toEqual(
+      new Map([
+        ["foo", {}],
+        ["bar", {}],
+      ]),
+    );
   });
 
   describe("inheritance", () => {
@@ -111,7 +121,7 @@ describe("getCodablePropertiesForInstance", () => {
         baz = "baz";
       }
 
-      expect(getCodableProperties(Baz)).toEqual(["foo"]);
+      expect(getCodableProperties(Baz)).toEqual(new Map([["foo", {}]]));
     });
 
     it("inheritance with codable fields", () => {
@@ -133,16 +143,22 @@ describe("getCodablePropertiesForInstance", () => {
         baz2 = "baz2";
       }
 
-      expect(getCodableProperties(Baz)).toEqual(["baz", "bar", "foo"]);
+      expect(getCodableProperties(Baz)).toEqual(
+        new Map([
+          ["baz", {}],
+          ["bar", {}],
+          ["foo", {}],
+        ]),
+      );
     });
 
     it("mixed inheritance", () => {
       class Foo {
         accessor foo = "foo";
-        @codable()
+        @codable({ encodeAs: "foo8" })
         foo2 = "foo2";
 
-        @codable()
+        @codable("bar4")
         accessor bar3 = "bar";
       }
 
@@ -157,7 +173,13 @@ describe("getCodablePropertiesForInstance", () => {
         baz2 = "baz2";
       }
 
-      expect(getCodableProperties(Baz)).toEqual(["bar", "bar3", "foo2"]);
+      expect(getCodableProperties(Baz)).toEqual(
+        new Map([
+          ["bar", {}],
+          ["bar3", { encodeAs: "bar4" }],
+          ["foo2", { encodeAs: "foo8" }],
+        ]),
+      );
     });
   });
 });

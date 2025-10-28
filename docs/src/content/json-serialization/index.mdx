@@ -1,0 +1,56 @@
+import { Callout } from 'nextra/components';
+
+# JSON Serialization Overview
+
+Codables provides high-performance JSON serialization that extends standard JSON to handle JavaScript types that JSON can't serialize natively.
+
+## Quick Start
+
+```typescript
+import { encode, decode } from "codables";
+
+const data = {
+  date: new Date("2025-01-01"),
+  set: new Set(["a", "b", "c"]),
+  map: new Map([["key", "value"]]),
+};
+
+const encoded = encode(data);
+// Result: { 
+//   date: { $$Date: "2025-01-01T00:00:00.000Z" }, 
+//   set: { $$Set: ["a", "b", "c"] }, 
+//   map: { $$Map: [["key", "value"]] } 
+// }
+
+const decoded = decode(encoded);
+// decoded.date instanceof Date === true
+```
+
+[Open playground](https://pie6k.github.io/codables/) to test your own data.
+
+## Key Features
+
+- **Serializes JavaScript types**: `Date`, `BigInt`, `Map`, `Set`, `RegExp`, `Symbol`, `Error`, `URL`, typed arrays, and more
+- **Human-readable output**: Uses tagged format that's still readable and debuggable
+- **Great performance**: ~3x faster encoding and ~2x faster decoding than SuperJSON
+- **Reference preservation**: Handles circular references and maintains object identity
+- **Type safety**: Full TypeScript support with autocompletion
+
+## Stringify & Parse
+
+For convenience, Codables provides `stringify` and `parse` functions that combine encoding/decoding with JSON stringification:
+
+```typescript
+import { stringify, parse } from "codables";
+
+const jsonString = stringify(data);
+const restored = parse(jsonString);
+```
+
+## Try It Out
+
+Experiment with Codables in the [playground](https://pie6k.github.io/codables/) to see how different types are encoded and test circular reference handling.
+
+<Callout type="info">
+For simple JSON serialization needs, Codables is lightweight and only imports what you need. Advanced features like class decorators are available from `codables/decorators` when you need them.
+</Callout>

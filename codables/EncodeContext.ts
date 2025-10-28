@@ -22,6 +22,11 @@ export interface EncodeOptions {
    * @default true
    */
   preserveReferences?: boolean;
+
+  /**
+   * @default false
+   */
+  includeErrorStack?: boolean;
 }
 
 export class EncodeContext {

@@ -104,7 +104,7 @@ describe("external refs", () => {
     }).toThrowErrorMatchingInlineSnapshot(`[Error: Codable decorator cannot be used on external properties]`);
   });
 
-  it("should decode to null for optional external refs", () => {
+  it("should decode to undefined for optional external refs", () => {
     const data = {
       ext: externalReference("ext", true),
     };
@@ -117,14 +117,14 @@ describe("external refs", () => {
 
     const decoded = defaultCoder.decode<typeof data>(encoded, { externalReferences: { none: {} } });
 
-    expect(decoded.ext).toBeNull();
+    expect(decoded.ext).toBeUndefined();
   });
 
   it("optional external refs with decorators", () => {
     @codableClass("Foo")
     class Foo {
       @external("ext", true)
-      ext!: unknown;
+      ext?: unknown;
 
       @codable()
       foo: string = "foo";
@@ -142,7 +142,7 @@ describe("external refs", () => {
 
     const decoded = coder.decode<Foo>(encoded, { externalReferences: { none: {} } });
 
-    expect(decoded.ext).toBeNull();
+    expect(decoded.ext).toBeUndefined();
     expect(decoded.foo).toBe("foo");
   });
 });

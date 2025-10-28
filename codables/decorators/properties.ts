@@ -1,5 +1,6 @@
+import { CodableClassFieldsMap, externalClassFieldsRegistry } from "./registry";
+
 import { AnyClass } from "./types";
-import { externalClassFieldsRegistry } from "./registry";
 import { getIsForbiddenProperty } from "../utils/security";
 import { getRegisteredCodableFields } from "./codable";
 import { iteratePrototypeChain } from "./prototype";
@@ -14,32 +15,28 @@ function* iterateOwnPropertyDescriptors(thing: object): Generator<[string, Prope
   }
 }
 
-function collectRegisteredCodableFields(Class: AnyClass) {
-  const keys = new Set<string>();
-
+function collectRegisteredCodableFields(Class: AnyClass, keysMap: CodableClassFieldsMap) {
   for (const ClassInPrototype of iteratePrototypeChain(Class)) {
     const registeredKeysMap = getRegisteredCodableFields(ClassInPrototype as AnyClass);
 
     if (!registeredKeysMap) continue;
 
-    for (const key of registeredKeysMap.keys()) {
-      keys.add(key as string);
+    for (const [key, metadata] of registeredKeysMap.entries()) {
+      keysMap.set(key, metadata);
     }
   }
 
-  if (keys.size === 0) return null;
+  if (keysMap.size === 0) return null;
 
-  return keys;
+  return keysMap;
 }
 
 export function getCodableProperties(Class: AnyClass) {
-  const explicitlyRegisteredKeys = collectRegisteredCodableFields(Class);
+  const keysMap: CodableClassFieldsMap = new Map();
 
-  if (explicitlyRegisteredKeys) {
-    return [...explicitlyRegisteredKeys];
-  }
+  collectRegisteredCodableFields(Class, keysMap);
 
-  return [];
+  return keysMap;
 }
 
 export function getExternalProperties(Class: AnyClass) {

@@ -1,0 +1,104 @@
+import { Callout } from 'nextra/components'
+
+# Copy
+
+Codables provides a `copy` function that creates deep copies of any nested, complex object while preserving all types and creating new references.
+
+## Basic Usage
+
+```typescript
+import { copy } from "codables";
+
+const original = {
+  date: new Date("2025-01-01"),
+  set: new Set(["a", "b", "c"]),
+  map: new Map([["key", "value"]]),
+};
+
+const copied = copy(original);
+// copied !== original (different object)
+// copied.date instanceof Date === true
+// copied.set instanceof Set === true
+// copied.map instanceof Map === true
+```
+
+## Reference Behavior
+
+Unlike encoding/decoding, `copy` creates new instances for every reference:
+
+```typescript
+const shared = { value: "shared" };
+const original = [shared, shared];
+
+const copied = copy(original);
+// copied[0] !== copied[1] (new references)
+// copied[0].value === "shared" (same data)
+```
+
+## Custom Types
+
+The `copy` function works with custom types through custom coders:
+
+```typescript
+import { Coder } from "codables";
+
+class CustomType {
+  constructor(public data: string) {}
+}
+
+const $$custom = createCoderType(
+  "CustomType",
+  (value) => value instanceof CustomType,
+  (instance) => instance.data,
+  (data) => new CustomType(data)
+);
+
+const coder = new Coder([$$custom]);
+
+const original = new CustomType("test");
+const copied = coder.copy(original);
+// copied instanceof CustomType === true
+// copied !== original
+// copied.data === "test"
+```
+
+## Deep Copying Complex Structures
+
+```typescript
+const complex = {
+  nested: {
+    map: new Map([
+      ["key1", { value: "value1" }],
+      ["key2", { value: "value2" }]
+    ]),
+    set: new Set([new Date("2025-01-01")])
+  }
+};
+
+const copied = copy(complex);
+// All nested objects, maps, sets, and dates are properly copied
+// Every reference is new, but structure and types are preserved
+```
+
+## Use Cases
+
+The `copy` function is perfect for:
+
+- **Creating snapshots** of application state
+- **Deep cloning** complex objects before modification
+- **Creating independent copies** for parallel processing
+- **Testing** with isolated data copies
+
+```typescript
+// Create a snapshot of game state
+const gameSnapshot = copy(gameState);
+
+// Modify the snapshot without affecting original
+gameSnapshot.player.score += 100;
+
+// Original gameState remains unchanged
+```
+
+<Callout type="info">
+The `copy` function is equivalent to `decode(encode(value))` but optimized for the copying use case. Every reference in the copy will be new, ensuring complete independence from the original.
+</Callout>

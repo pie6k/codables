@@ -1,0 +1,138 @@
+import { Callout } from 'nextra/components'
+
+# Custom Types
+
+Codables allows you to define custom serialization for your own types using `createCoderType` and custom `Coder` instances.
+
+## Creating Custom Types
+
+```typescript
+import { createCoderType, Coder } from "codables";
+
+class Point {
+  constructor(public x: number, public y: number) {}
+}
+
+const $$point = createCoderType(
+  "Point",
+  (value) => value instanceof Point,
+  (point) => [point.x, point.y],
+  ([x, y]) => new Point(x, y)
+);
+
+const coder = new Coder([$$point]);
+
+const point = new Point(10, 20);
+const encoded = coder.encode(point);
+// { $$Point: [10, 20] }
+
+const decoded = coder.decode(encoded);
+// decoded instanceof Point === true
+```
+
+## Custom Coder Instances
+
+For applications with specific serialization needs, create custom `Coder` instances:
+
+```typescript
+import { Coder } from "codables";
+
+class User {
+  constructor(public name: string, public loginDates: Set<Date>) {}
+}
+
+const $$user = createCoderType(
+  "User",
+  (value) => value instanceof User,
+  (user) => ({ name: user.name, loginDates: user.loginDates }),
+  (data) => new User(data.name, data.loginDates)
+);
+
+const userCoder = new Coder([$$user]);
+
+const user = new User("John", new Set([new Date("2025-01-01")]));
+const encoded = userCoder.encode(user);
+// { $$User: { name: "John", loginDates: { $$Set: [{ $$Date: "2025-01-01T00:00:00.000Z" }] } } }
+```
+
+## Nested Custom Types
+
+Custom types can contain other custom types and built-in types:
+
+```typescript
+class Address {
+  constructor(public street: string, public city: string) {}
+}
+
+class Person {
+  constructor(public name: string, public address: Address) {}
+}
+
+const $$address = createCoderType(
+  "Address",
+  (value) => value instanceof Address,
+  (addr) => [addr.street, addr.city],
+  ([street, city]) => new Address(street, city)
+);
+
+const $$person = createCoderType(
+  "Person", 
+  (value) => value instanceof Person,
+  (person) => ({ name: person.name, address: person.address }),
+  (data) => new Person(data.name, data.address)
+);
+
+const coder = new Coder([$$person, $$address]);
+
+const person = new Person("Jane", new Address("123 Main St", "New York"));
+const encoded = coder.encode(person);
+// { $$Person: { name: "Jane", address: { $$Address: ["123 Main St", "New York"] } } }
+```
+
+## Priority System
+
+When multiple types could match the same value, use the `priority` parameter to control matching order:
+
+```typescript
+const $$highPriority = createCoderType(
+  "HighPriority",
+  (value) => typeof value === "string" && value.startsWith("special:"),
+  (value) => value,
+  (value) => value,
+  10 // Higher priority
+);
+
+const $$lowPriority = createCoderType(
+  "LowPriority", 
+  (value) => typeof value === "string",
+  (value) => value,
+  (value) => value,
+  1 // Lower priority
+);
+
+const coder = new Coder([$$lowPriority, $$highPriority]);
+// HighPriority will match first due to higher priority number
+```
+
+<Callout type="info">
+Higher priority numbers are checked first. The default priority is 0.
+</Callout>
+
+## Type Registration
+
+You can also register types directly on a coder instance:
+
+```typescript
+const coder = new Coder();
+
+coder.addType(
+  "CustomType",
+  (value) => value instanceof CustomType,
+  (instance) => instance.data,
+  (data) => new CustomType(data)
+);
+```
+
+<Callout type="warning">
+Don't register types on the default coder (`defaultCoder`). Create custom instances for your specific needs.
+</Callout>

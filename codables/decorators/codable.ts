@@ -2,6 +2,7 @@ import { PrivateMetadata, getMetadataKey } from "./PrivateMetadata";
 import { codableClassFieldsRegistry, externalClassFieldsRegistry } from "./registry";
 
 import { AnyClass } from "./types";
+import { removeUndefinedProperties } from "../utils/misc";
 
 type CodableFieldDecoratorContext<T, V> = ClassFieldDecoratorContext<T, V> | ClassAccessorDecoratorContext<T, V>;
 
@@ -40,6 +41,6 @@ export function codable<T, V>(optionsInput?: CodableOptionsInput) {
 
     const fieldsMap = codableClassFieldsRegistry.getOrInit(context.metadata, () => new Map());
 
-    fieldsMap.set(context.name, { encodeAs: options?.encodeAs });
+    fieldsMap.set(context.name, removeUndefinedProperties({ encodeAs: options?.encodeAs }));
   };
 }
