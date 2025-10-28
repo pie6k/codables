@@ -13,7 +13,18 @@ interface CodableOptions {
   encodeAs?: string;
 }
 
-export function codable<T, V>(options?: CodableOptions) {
+type CodableOptionsInput = string | CodableOptions;
+
+function resolveCodableOptions(options?: CodableOptionsInput): CodableOptions | null {
+  if (typeof options === "string") {
+    return { encodeAs: options };
+  }
+
+  return options ?? null;
+}
+
+export function codable<T, V>(optionsInput?: CodableOptionsInput) {
+  const options = resolveCodableOptions(optionsInput);
   return function codable<T, V>(initialValue: any, context: CodableFieldDecoratorContext<T, V>) {
     if (context.kind !== "accessor" && context.kind !== "field") {
       throw new Error("Codable decorator can only be used on fields or accessors");

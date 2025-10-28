@@ -9,11 +9,7 @@ export function getRegisteredCodableFields(Class: AnyClass) {
   return codableClassFieldsRegistry.getFor(Class);
 }
 
-interface CodableOptions {
-  encodeAs?: string;
-}
-
-export function external<T, V>(key: string) {
+export function external<T, V>(key: string, isOptional = false) {
   return function external<T, V>(initialValue: any, context: CodableFieldDecoratorContext<T, V>) {
     const externalFieldsMap = externalClassFieldsRegistry.getOrInit(context.metadata, () => new Map());
 
@@ -25,6 +21,6 @@ export function external<T, V>(key: string) {
       throw new Error("External decorator cannot be used on codable properties");
     }
 
-    externalFieldsMap.set(context.name, key);
+    externalFieldsMap.set(context.name, { key, isOptional });
   };
 }

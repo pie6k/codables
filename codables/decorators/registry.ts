@@ -20,7 +20,7 @@ export interface CodableClassMetadata<T extends AnyClass = AnyClass> {
 
 export const codableClassRegistry = new PrivateMetadata<CodableClassMetadata>();
 export const codableClassFieldsRegistry = new PrivateMetadata<CodableClassFieldsMap>();
-export const externalClassFieldsRegistry = new PrivateMetadata<Map<string, string>>();
+export const externalClassFieldsRegistry = new PrivateMetadata<Map<string, { key: string; isOptional: boolean }>>();
 
 export function registerCodableClass<T extends AnyClass>(key: DecoratorMetadata, metadata: CodableClassMetadata<T>) {
   return codableClassRegistry.init(key, metadata);

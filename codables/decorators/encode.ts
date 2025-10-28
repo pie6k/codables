@@ -13,15 +13,17 @@ export function createDefaultClassEncoder<T extends AnyClass>(
   const fieldsFromOptionsKeys = [...fieldsFromOptions.keys()];
   return (instance: InstanceType<T>) => {
     const keys = getCodableProperties(Class);
-    const externalKeys = getExternalProperties(Class) ?? [];
+    const externalKeysMap = getExternalProperties(Class);
     const data: Record<string, any> = {};
 
     for (const key of [...keys, ...fieldsFromOptionsKeys]) {
       data[key as string] = instance[key];
     }
 
-    for (const key of externalKeys) {
-      data[key] = externalReference(key);
+    if (externalKeysMap) {
+      for (const [key, externalRef] of externalKeysMap.entries()) {
+        data[key] = externalReference(externalRef.key, externalRef.isOptional);
+      }
     }
 
     return [data] as ConstructorParameters<T>;

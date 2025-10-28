@@ -1,19 +1,26 @@
 import { createCoderType } from "./CoderType";
 
 export class ExternalReference<T> {
-  constructor(public readonly key: string) {}
+  constructor(
+    public readonly key: string,
+    readonly isOptional = false,
+  ) {}
 }
 
-export function externalReference<T>(key: string): T {
-  return new ExternalReference<T>(key) as unknown as T;
+export function externalReference<T>(key: string, isOptional = false): T {
+  return new ExternalReference<T>(key, isOptional) as unknown as T;
 }
 
 export const $$externalReference = createCoderType(
   "external",
   (value) => value instanceof ExternalReference,
-  (value) => value.key,
-  (key, context) => {
+  (ref) => {
+    return { key: ref.key, isOptional: ref.isOptional };
+  },
+  ({ key, isOptional }, context) => {
     if (!context.externalReferencesMap.has(key)) {
+      if (isOptional) return null;
+
       throw new Error(`External reference "${key}" not found`);
     }
 

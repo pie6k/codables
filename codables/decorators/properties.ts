@@ -47,5 +47,5 @@ export function getExternalProperties(Class: AnyClass) {
 
   if (!externalFieldsMap) return null;
 
-  return [...externalFieldsMap.keys()];
+  return externalFieldsMap;
 }

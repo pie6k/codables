@@ -303,3 +303,41 @@ describe("constructor", () => {
     expect(decoded.foo).toBe("foo");
   });
 });
+
+describe("keys mapping", () => {
+  it("should re-map keys from @codableClass options", () => {
+    @codableClass("Foo", { keys: { foo: "new_foo", bar: "new_bar" } })
+    class Foo {
+      foo = "foo";
+      bar = "bar";
+    }
+
+    const coder = new Coder([Foo]);
+
+    expect(coder.encode(new Foo())).toEqual({
+      $$Foo: [{ new_foo: "foo", new_bar: "bar" }],
+    });
+
+    const decoded = coder.decode<Foo>({ $$Foo: [{ new_foo: "foo", new_bar: "bar" }] });
+
+    expect(decoded).toEqual(new Foo());
+  });
+
+  it("should re-map keys from @codable options", () => {
+    @codableClass("Foo")
+    class Foo {
+      @codable("new_foo")
+      foo = "foo";
+    }
+
+    const coder = new Coder([Foo]);
+
+    expect(coder.encode(new Foo())).toEqual({
+      $$Foo: [{ new_foo: "foo" }],
+    });
+
+    const decoded = coder.decode<Foo>({ $$Foo: [{ new_foo: "foo" }] });
+
+    expect(decoded).toEqual(new Foo());
+  });
+});
