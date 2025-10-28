@@ -2,11 +2,15 @@ import { Callout } from 'nextra/components'
 
 # Quick Start
 
-Welcome to Codables - a high-performance, extensible JSON serializer with support for complex types and a framework that makes coding serializable classes much easier.
+Welcome to Codables - High-performance, extensible, and declarative "anything to/from JSON" serializer.
 
-## What is Codables?
+Experiment with Codables in the [playground](https://codableslib.com/playground/)
 
-Codables solves two main problems:
+---
+
+# Rationale
+
+Codables addresses two main problems:
 
 1. **JSON Serialization**: Extends JSON to handle JavaScript types that JSON can't serialize (`Date`, `BigInt`, `Map`, `Set`, etc.) with excellent performance
 
@@ -14,9 +18,29 @@ Codables solves two main problems:
 
 [JSON Serialization Overview](/docs/json-serialization)
 
-2. **Declarative Serialization**: Eliminates the dual-format problem by letting you work with your classes naturally while seamlessly persisting and transmitting them
+2. **Declarative Serialization**: Makes it easy to define serializable nested and complex classes with minimal boilerplate.
 
 [Declarative Serialization Overview](/docs/declarative-serialization)
+
+## Key Features
+
+- **🚀 High Performance**: ~3x faster encoding and ~2x faster or comparable (if using reference equality) decoding than SuperJSON
+- **🔒 Type Safety**: Full TypeScript support with compile-time checking
+- **🔄 Reference Preservation**: Handles circular references and maintains object identity
+- **🛡️ Security**: Built-in protection against prototype pollution
+- **🎯 Zero Boilerplate**: No manual conversion logic or separate data interfaces
+- **🔧 Extensible**: Easy to add custom serialization types
+- **📦 Lightweight**: Even with a lot of powerful features, Codables API is relatively small and (hopefully) easy to understand.
+
+## Installation
+
+```bash
+npm install codables
+# or
+yarn add codables
+# or
+pnpm add codables
+```
 
 ## Quick Examples
 
@@ -31,13 +55,23 @@ const data = {
 };
 
 const encoded = encode(data);
-// { date: { $$Date: "2025-01-01T00:00:00.000Z" }, set: { $$Set: ["a", "b", "c"] }, map: { $$Map: [["key", "value"]] } }
-
+/** 
+ * { 
+ *   date: { $$Date: "2025-01-01T00:00:00.000Z" }, 
+ *   set: { $$Set: ["a", "b", "c"] }, 
+ *   map: { $$Map: [["key", "value"]] } 
+ * }
+ * */
 const decoded = decode(encoded);
 // decoded.date instanceof Date === true
 ```
 
 ### Declarative Class Serialization
+
+Instead of manually converting your data to/from JSON, you can use Codables to serialize and deserialize your data in declarative way by marking your classes and properties as codable.
+
+First, define your classes and mark them as codable:
+
 ```typescript
 import { codableClass, codable, Coder } from "codables";
 
@@ -68,17 +102,16 @@ class GameState {
   }
 }
 
-// Create a custom coder instance that is aware of your classes.
-const coder = new Coder([GameState]);
-
-// Create your instances like normal.
 const gameState = new GameState();
 gameState.addPlayer(new Player({ name: "Alice", score: 100 }));
+```
 
+Then, create a custom coder instance that is aware of your classes and encode:
 
-const encoded = coder.encode(gameState);
-const decoded = coder.decode<GameState>(encoded);
-// All types and references preserved!
+```typescript
+const gameCoder = new Coder([GameState]);
+
+const encoded = gameCoder.encode(gameState);
 ```
 
 Above will be serialized as:
@@ -96,28 +129,13 @@ Above will be serialized as:
 }
 ```
 
-## Key Features
+Later, you can decode your data back to your classes. All types, references, and circular dependencies are preserved!
 
-- **🚀 High Performance**: ~3x faster encoding and ~2x faster or comparable (if using reference equality) decoding than SuperJSON
-- **🔒 Type Safety**: Full TypeScript support with compile-time checking
-- **🔄 Reference Preservation**: Handles circular references and maintains object identity
-- **🛡️ Security**: Built-in protection against prototype pollution
-- **🎯 Zero Boilerplate**: No manual conversion logic or separate data interfaces
-- **🔧 Extensible**: Easy to add custom serialization types
-- **📦 Lightweight**: Modular imports - use only what you need
-
-## Try It Out
-
-Experiment with Codables in the [playground](https://codableslib.com/playground/) to see how different types are encoded and test circular reference handling.
-
-## Installation
-
-```bash
-npm install codables
-# or
-yarn add codables
-# or
-pnpm add codables
+```typescript
+const decoded = gameCoder.decode<GameState>(encoded);
+// decoded.players is Set<Player>
+// decoded.createdAt is Date
+// decoded.activePlayer is Player | null
 ```
 
 ## Next Steps

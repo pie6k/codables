@@ -24,7 +24,7 @@ const copied = copy(original);
 
 ## Reference Behavior
 
-Unlike encoding/decoding, `copy` creates new instances for every reference:
+Every single object from the original data is copied. References are preserved **inside** the copy.
 
 ```typescript
 const shared = { value: "shared" };
@@ -32,73 +32,14 @@ const original = [shared, shared];
 
 const copied = copy(original);
 // copied[0] !== copied[1] (new references)
-// copied[0].value === "shared" (same data)
-```
-
-## Custom Types
-
-The `copy` function works with custom types through custom coders:
-
-```typescript
-import { Coder } from "codables";
-
-class CustomType {
-  constructor(public data: string) {}
-}
-
-const $$custom = createCodableType(
-  "CustomType",
-  (value) => value instanceof CustomType,
-  (instance) => instance.data,
-  (data) => new CustomType(data)
-);
-
-const coder = new Coder([$$custom]);
-
-const original = new CustomType("test");
-const copied = coder.copy(original);
-// copied instanceof CustomType === true
-// copied !== original
-// copied.data === "test"
-```
-
-## Deep Copying Complex Structures
-
-```typescript
-const complex = {
-  nested: {
-    map: new Map([
-      ["key1", { value: "value1" }],
-      ["key2", { value: "value2" }]
-    ]),
-    set: new Set([new Date("2025-01-01")])
-  }
-};
-
-const copied = copy(complex);
-// All nested objects, maps, sets, and dates are properly copied
-// Every reference is new, but structure and types are preserved
-```
-
-## Use Cases
-
-The `copy` function is perfect for:
-
-- **Creating snapshots** of application state
-- **Deep cloning** complex objects before modification
-- **Creating independent copies** for parallel processing
-- **Testing** with isolated data copies
-
-```typescript
-// Create a snapshot of game state
-const gameSnapshot = copy(gameState);
-
-// Modify the snapshot without affecting original
-gameSnapshot.player.score += 100;
-
-// Original gameState remains unchanged
+// copied[0] === copied[1] (reference equality is preserved inside the copy)
+// original[0] !== copied[0] (reference equality is preserved **inside** the copy)
 ```
 
 <Callout type="info">
-The `copy` function is equivalent to `decode(encode(value))` but optimized for the copying use case. Every reference in the copy will be new, ensuring complete independence from the original.
+The `copy` function is equivalent to `decode(encode(value))`. Every reference in the copy will be new, ensuring complete independence from the original.
+</Callout>
+
+<Callout type="info">
+You can copy anything that is serializable by Codables, including custom types and circular references.
 </Callout>

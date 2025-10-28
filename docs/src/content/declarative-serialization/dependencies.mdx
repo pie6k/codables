@@ -2,7 +2,11 @@ import { Callout } from 'nextra/components';
 
 # Dependencies
 
-The `dependencies` option in `@codableClass` allows you to specify other codable classes that your class depends on. This enables automatic discovery of nested codable classes, so you only need to register the root class with `Coder`.
+Codable classes and custom types can depend on other codable classes or types.
+
+Thanks to `dependencies` option, each type or class can declare its own dependencies.
+
+This allows you to write code that is more modular and self-contained, instead of having some central place where you collect all of custom types (which you can still do, if you want to).
 
 ## Basic Usage
 
@@ -15,6 +19,7 @@ class Bar {
   bar: string = "bar";
 }
 
+// If we are encoding Foo, Bar will also be encoded.
 @codableClass("Foo", { dependencies: [Bar] })
 class Foo {
   @codable()
@@ -33,24 +38,25 @@ const decoded = coder.decode<Foo>(encoded);
 
 ## Automatic Discovery
 
-The key benefit of dependencies is that you only need to pass the root class to `Coder`. The framework automatically discovers and registers all dependent classes:
+Now, you only need to register the root class, and all dependencies will be automatically discovered.
 
 ```typescript
 // Without dependencies - you'd need to register both classes
-const coder = new Coder([Foo, Bar]); // Manual registration
+const coder = new Coder([Foo, Bar]); // Before
 
 // With dependencies - automatic discovery
-const coder = new Coder([Foo]); // Bar is automatically discovered
+const coder = new Coder([Foo]); // Now
 ```
-
-This is especially useful in complex applications where you have deep object graphs with many interconnected classes.
 
 ## Lazy Dependencies (Thunks)
 
-For circular dependencies, you can use function thunks to defer the dependency resolution:
+Below, we have two classes that depend on each other.
+
+You can use function thunks to defer the dependency resolution:
 
 ```typescript
-@codableClass("User")
+// Lazy evaluation
+@codableClass("User", { dependencies: () => [Post] })
 class User {
   @codable()
   name: string;
@@ -58,14 +64,13 @@ class User {
   @codable()
   posts: Post[] = [];
 
-  constructor(data: Pick<User, "name">) {
+  constructor(data: Memberwise<User, "name">) {
     this.name = data.name;
   }
 }
 
-@codableClass("Post", { 
-  dependencies: () => [User] // Lazy evaluation with thunk
-})
+
+@codableClass("Post", { dependencies: () => [User] })
 class Post {
   @codable()
   title: string;
@@ -82,44 +87,13 @@ class Post {
 const coder = new Coder([Post]); // User is discovered lazily
 ```
 
-## Why Lazy Loading?
-
-Lazy evaluation prevents compilation errors in circular dependency scenarios:
-
-```typescript
-// ❌ This would cause compilation errors due to circular imports
-@codableClass("A", { dependencies: [B] })
-class A {
-  @codable()
-  b: B;
-}
-
-@codableClass("B", { dependencies: [A] }) // Circular reference!
-class B {
-  @codable()
-  a: A;
-}
-
-// ✅ Use thunks to break the circular dependency
-@codableClass("A", { dependencies: () => [B] })
-class A {
-  @codable()
-  b: B;
-}
-
-@codableClass("B", { dependencies: () => [A] })
-class B {
-  @codable()
-  a: A;
-}
-```
 
 ## Complex Dependency Graphs
 
 Dependencies work seamlessly with complex object hierarchies:
 
 ```typescript
-@codableClass("Comment")
+@codableClass("Comment", { dependencies: () => [User] })
 class Comment {
   @codable()
   text: string;
@@ -127,7 +101,7 @@ class Comment {
   @codable()
   author: User;
 
-  constructor(data: Pick<Comment, "text" | "author">) {
+  constructor(data: Memberwise<Comment, "text" | "author">) {
     this.text = data.text;
     this.author = data.author;
   }
@@ -147,7 +121,7 @@ class Post {
   @codable()
   comments: Comment[] = [];
 
-  constructor(data: Pick<Post, "title" | "content" | "author">) {
+  constructor(data: Memberwise<Post, "title" | "content" | "author">) {
     this.title = data.title;
     this.content = data.content;
     this.author = data.author;
@@ -162,7 +136,7 @@ class Blog {
   @codable()
   posts: Post[] = [];
 
-  constructor(data: Pick<Blog, "name">) {
+  constructor(data: Memberwise<Blog, "name">) {
     this.name = data.name;
   }
 }
@@ -171,11 +145,3 @@ class Blog {
 const coder = new Coder([Blog]);
 // User, Comment, and Post are all automatically discovered
 ```
-
-<Callout type="info">
-Dependencies are resolved lazily when needed, so you can safely use thunks even when circular dependencies aren't present. The framework will handle both eager and lazy dependency resolution automatically.
-</Callout>
-
-<Callout type="tip">
-Use dependencies to keep your `Coder` registration clean and focused. Instead of manually tracking all classes in your object graph, just register the root classes and let the framework discover the rest.
-</Callout>

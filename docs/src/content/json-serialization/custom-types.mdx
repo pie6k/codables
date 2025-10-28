@@ -4,6 +4,10 @@ import { Callout } from 'nextra/components'
 
 Codables allows you to define custom serialization for your own types using `createCodableType` and custom `Coder` instances.
 
+<Callout type="info">
+When using [Declarative Serialization](/docs/declarative-serialization), in most cases custom types will be created automatically for you.
+</Callout>
+
 ## Creating Custom Types
 
 ```typescript
@@ -14,14 +18,16 @@ class Point {
 }
 
 const $$point = createCodableType(
-  "Point",
-  (value) => value instanceof Point,
-  (point) => [point.x, point.y],
-  ([x, y]) => new Point(x, y)
+  "Point", // name of the type
+  (value) => value instanceof Point, // how to detect some value should be encoded using this type
+  (point) => [point.x, point.y], // how to encode the value (might return rich data like `Map` or `Set`, or even other custom types)
+  ([x, y]) => new Point(x, y) // how to recreate the value from the encoded data
 );
 
+// Create a custom coder instance that is aware of your custom type
 const coder = new Coder([$$point]);
 
+// Create your instance like normal
 const point = new Point(10, 20);
 const encoded = coder.encode(point);
 // { $$Point: [10, 20] }
@@ -30,34 +36,18 @@ const decoded = coder.decode(encoded);
 // decoded instanceof Point === true
 ```
 
-## Custom Coder Instances
+<Callout type="info">
+It is intentionally not possible to globally register custom types. You can only register custom types on a custom coder instance.
+</Callout>
 
-For applications with specific serialization needs, create custom `Coder` instances:
-
-```typescript
-import { Coder } from "codables";
-
-class User {
-  constructor(public name: string, public loginDates: Set<Date>) {}
-}
-
-const $$user = createCodableType(
-  "User",
-  (value) => value instanceof User,
-  (user) => ({ name: user.name, loginDates: user.loginDates }),
-  (data) => new User(data.name, data.loginDates)
-);
-
-const userCoder = new Coder([$$user]);
-
-const user = new User("John", new Set([new Date("2025-01-01")]));
-const encoded = userCoder.encode(user);
-// { $$User: { name: "John", loginDates: { $$Set: [{ $$Date: "2025-01-01T00:00:00.000Z" }] } } }
-```
 
 ## Nested Custom Types
 
-Custom types can contain other custom types and built-in types:
+Custom types can contain other custom types and built-in types.
+
+In this example, we create classes that use other custom types or complex built-in types like `Date`.
+
+You don't need to worry about recursive encoding/decoding. Codables will handle it for you.
 
 ```typescript
 class Address {
@@ -65,7 +55,7 @@ class Address {
 }
 
 class Person {
-  constructor(public name: string, public address: Address) {}
+  constructor(public name: string, public address: Address, public bornAt: Date) {}
 }
 
 const $$address = createCodableType(
@@ -78,61 +68,24 @@ const $$address = createCodableType(
 const $$person = createCodableType(
   "Person", 
   (value) => value instanceof Person,
-  (person) => ({ name: person.name, address: person.address }),
-  (data) => new Person(data.name, data.address)
+  (person) => ({ name: person.name, address: person.address, bornAt: person.bornAt }),
+  (data) => new Person(data.name, data.address, data.bornAt)
 );
 
 const coder = new Coder([$$person, $$address]);
 
-const person = new Person("Jane", new Address("123 Main St", "New York"));
+const person = new Person("Jane", new Address("123 Main St", "New York"), new Date("1990-01-01"));
 const encoded = coder.encode(person);
-// { $$Person: { name: "Jane", address: { $$Address: ["123 Main St", "New York"] } } }
+/** 
+ * { 
+ *   $$Person: { 
+ *     name: "Jane", 
+ *     address: { $$Address: ["123 Main St", "New York"] }, 
+ *     bornAt: { $$Date: "1990-01-01T00:00:00.000Z" } 
+ *   } 
+ * }
+ */
+
+const decoded = coder.decode(encoded);
+// decoded instanceof Person === true
 ```
-
-## Priority System
-
-When multiple types could match the same value, use the `priority` parameter to control matching order:
-
-```typescript
-const $$highPriority = createCodableType(
-  "HighPriority",
-  (value) => typeof value === "string" && value.startsWith("special:"),
-  (value) => value,
-  (value) => value,
-  10 // Higher priority
-);
-
-const $$lowPriority = createCodableType(
-  "LowPriority", 
-  (value) => typeof value === "string",
-  (value) => value,
-  (value) => value,
-  1 // Lower priority
-);
-
-const coder = new Coder([$$lowPriority, $$highPriority]);
-// HighPriority will match first due to higher priority number
-```
-
-<Callout type="info">
-Higher priority numbers are checked first. The default priority is 0.
-</Callout>
-
-## Type Registration
-
-You can also register types directly on a coder instance:
-
-```typescript
-const coder = new Coder();
-
-coder.addType(
-  "CustomType",
-  (value) => value instanceof CustomType,
-  (instance) => instance.data,
-  (data) => new CustomType(data)
-);
-```
-
-<Callout type="warning">
-Don't register types on the default coder (`defaultCoder`). Create custom instances for your specific needs.
-</Callout>

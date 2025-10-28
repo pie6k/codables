@@ -2,23 +2,24 @@ import { Callout } from 'nextra/components';
 
 # References
 
-Codables automatically preserves object references and handles circular references, ensuring that identical objects remain identical after encoding and decoding.
+Codables checks if the same object appears multiple times in the input (including circular references) and automatically preserves object references.
 
-## Reference Preservation
+Thanks to that, if you decode the data later, all referential equalities are preserved.
 
-When the same object appears multiple times, Codables preserves the reference equality:
 
 ```typescript
 import { encode, decode } from "codables";
 
 const shared = { value: "shared" };
-const data = [shared, shared];
+const original = [shared, shared];
 
-const encoded = encode(data);
+const encoded = encode(original);
 // [{ value: "shared" }, { $$ref: "/0" }]
+//        ^ original          ^ reference to the original
 
 const decoded = decode(encoded);
-// decoded[0] === decoded[1] (same reference)
+// decoded[0] === decoded[1]; // true -> (same reference)
+// original[0] === decoded[0]; // false -> equality is preserved inside the copy of the original data
 ```
 
 ## Circular References
@@ -40,47 +41,6 @@ const decoded = decode(encoded);
 // decoded.children[0].parent === decoded (circular reference preserved)
 ```
 
-## Complex Circular Structures
-
-More complex circular references work seamlessly:
-
-```typescript
-const nodeA = { id: "A", connections: [] };
-const nodeB = { id: "B", connections: [] };
-const nodeC = { id: "C", connections: [] };
-
-// Create circular connections
-nodeA.connections.push(nodeB);
-nodeB.connections.push(nodeC);
-nodeC.connections.push(nodeA);
-
-const encoded = encode([nodeA, nodeB, nodeC]);
-// [
-//   { id: "A", connections: [{ id: "B", connections: [{ id: "C", connections: [{ $$ref: "/0" }] }] }] },
-//   { $$ref: "/0/connections/0" },
-//   { $$ref: "/0/connections/0/connections/0" }
-// ]
-
-const decoded = decode(encoded);
-// All circular references are correctly restored
-```
-
-## Reference Paths
-
-Reference paths use JSON Pointer format with escaping for special characters:
-
-```typescript
-const data = { "key/with": { "nested.key": "value" } };
-const shared = data["key/with"];
-const result = [data, shared];
-
-const encoded = encode(result);
-// [
-//   { "key/with": { "nested.key": "value" } },
-//   { $$ref: "/0/key~1with" }  // '/' escaped as '~1'
-// ]
-```
-
 ## Disabling Reference Preservation
 
 Sometimes you want to disable reference preservation to create independent copies:
@@ -91,6 +51,7 @@ const data = [shared, shared];
 
 const encoded = encode(data, { preserveReferences: false });
 // [{ value: "shared" }, { value: "shared" }]
+//                              ^ no reference created
 
 const decoded = decode(encoded);
 // decoded[0] !== decoded[1] (different objects)
@@ -98,7 +59,7 @@ const decoded = decode(encoded);
 
 ## Custom Types with References
 
-References work seamlessly with custom types:
+References work seamlessly with custom types as well:
 
 ```typescript
 class Node {
@@ -123,7 +84,3 @@ const encoded = coder.encode([parent, child]);
 //   { $$Node: { value: "child", parent: { $$ref: "/0" } } }
 // ]
 ```
-
-<Callout type="tip">
-Reference preservation is essential for maintaining object identity in complex data structures. Use `preserveReferences: false` only when you specifically need independent copies.
-</Callout>

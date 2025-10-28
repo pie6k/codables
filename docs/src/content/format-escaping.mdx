@@ -2,11 +2,15 @@ import { Callout } from 'nextra/components';
 
 # Format Escaping
 
-Codables automatically handles cases where your data conflicts with the internal serialization format by escaping conflicting keys.
+Codables use format like `{ $$Set: [1, 2, 3] }` to encode various types.
+
+It is unlikely, but possible, that some data looking exactly like this will be passed to be encoded.
 
 ## Automatic Escaping
 
-When your data contains keys that conflict with Codables' internal format (like `$$Set`, `$$Map`, etc.), they are automatically escaped:
+When your data contains keys that conflict with Codables' internal format (like `$$Set`, `$$Map`, etc.), they are automatically escaped into object like `{ "~$$Set": [1, 2, 3] }`.
+
+Later on, when you decode, it will be unescaped back to `{ $$Set: [1, 2, 3] }`, but will not be treated as a custom type.
 
 ```typescript
 import { encode, decode } from "codables";
@@ -26,121 +30,3 @@ const decoded = decode(encoded);
 // decoded.$$Map === [["key", "value"]]
 // decoded.$$Date === "not-a-date"
 ```
-
-## Escaping Mechanism
-
-Codables uses the `~` prefix to escape conflicting keys:
-
-- `$$Set` becomes `~$$Set`
-- `$$Map` becomes `~$$Map`
-- `$$Date` becomes `~$$Date`
-- And so on for all internal format keys
-
-## Multiple Escaping Levels
-
-If your data already contains escaped keys, Codables handles multiple levels of escaping:
-
-```typescript
-const alreadyEscaped = {
-  "~$$Set": [1, 2, 3]
-};
-
-const encoded = encode(alreadyEscaped);
-// { "~~$$Set": [1, 2, 3] } - double escaped
-
-const decoded = decode(encoded);
-// decoded["~$$Set"] === [1, 2, 3] - correctly restored
-```
-
-## Round-Trip Safety
-
-You can encode and decode data multiple times safely:
-
-```typescript
-const originalData = { $$Set: [1, 2, 3] };
-
-let current = originalData;
-for (let i = 0; i < 5; i++) {
-  current = encode(current);
-}
-
-// After 5 encodings: { "~~~~~$$Set": [1, 2, 3] }
-
-for (let i = 0; i < 5; i++) {
-  current = decode(current);
-}
-
-// After 5 decodings: { $$Set: [1, 2, 3] } - back to original
-```
-
-## Real-World Example
-
-This is particularly useful when working with data that might contain format-like keys:
-
-```typescript
-// Configuration data that happens to use format-like keys
-const config = {
-  $$Set: "database connection string",
-  $$Map: "API endpoint URL", 
-  $$Date: "cache expiration time",
-  regularKey: "normal value"
-};
-
-const encoded = encode(config);
-// {
-//   "~$$Set": "database connection string",
-//   "~$$Map": "API endpoint URL",
-//   "~$$Date": "cache expiration time", 
-//   regularKey: "normal value"
-// }
-
-const decoded = decode(encoded);
-// All values are correctly restored
-```
-
-## Custom Types and Escaping
-
-Escaping works seamlessly with custom types:
-
-```typescript
-import { createCodableType, Coder } from "codables";
-
-class ConfigClass {
-  constructor(public $$Set: string, public $$Map: string) {}
-}
-
-const $$config = createCodableType(
-  "Config",
-  (value) => value instanceof ConfigClass,
-  (instance) => ({ $$Set: instance.$$Set, $$Map: instance.$$Map }),
-  (data) => new ConfigClass(data.$$Set, data.$$Map)
-);
-
-const coder = new Coder([$$config]);
-
-const config = new ConfigClass("db-url", "api-url");
-const encoded = coder.encode(config);
-// { $$Config: [{ "~$$Set": "db-url", "~$$Map": "api-url" }] }
-
-const decoded = coder.decode(encoded);
-// decoded.$$Set === "db-url"
-// decoded.$$Map === "api-url"
-```
-
-## Performance Impact
-
-Format escaping has minimal performance impact:
-
-- **Detection**: Fast key checking during encoding
-- **Escaping**: Simple string manipulation
-- **Decoding**: Automatic unescaping during deserialization
-
-The escaping mechanism is designed to be lightweight and only activates when conflicts are detected.
-
-<Callout type="info">
-Format escaping ensures that Codables can handle any data structure, even when it conflicts with the internal serialization format. This makes Codables robust for real-world applications where data structure is unpredictable.
-</Callout>
-
-<Callout type="tip">
-You don't need to worry about format conflicts in your application code. Codables handles escaping automatically and transparently.
-</Callout>

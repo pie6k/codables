@@ -129,94 +129,6 @@ const decoded = coder.decode<Order>(encoded, {
 });
 ```
 
-## Real-World Example: Game State
-
-Here's a practical example where external references solve a common problem:
-
-```typescript
-// External dependencies
-class GameMap {
-  constructor(public mapId: string, public tiles: string[][]) {}
-}
-
-class PlayerManager {
-  constructor(public maxPlayers: number) {}
-}
-
-@codableClass("GameSession")
-class GameSession {
-  @external("gameMap")
-  map!: GameMap;
-
-  @external("playerManager")
-  playerManager!: PlayerManager;
-
-  @codable() sessionId: string;
-  @codable() players: Set<string> = new Set();
-  @codable() createdAt: Date;
-
-  constructor(data: Pick<GameSession, "sessionId" | "players" | "createdAt">) {
-    this.sessionId = data.sessionId;
-    this.players = data.players;
-    this.createdAt = data.createdAt;
-  }
-
-  addPlayer(playerId: string) {
-    if (this.players.size >= this.playerManager.maxPlayers) {
-      throw new Error("Game is full");
-    }
-    this.players.add(playerId);
-  }
-
-  getTileAt(x: number, y: number) {
-    return this.map.tiles[y][x];
-  }
-}
-
-// Usage
-const gameMap = new GameMap("map-forest", [["grass", "tree"], ["water", "stone"]]);
-const playerManager = new PlayerManager(4);
-
-const session = new GameSession({
-  sessionId: "session-456",
-  players: new Set(["player1"]),
-  createdAt: new Date()
-});
-
-session.map = gameMap;
-session.playerManager = playerManager;
-
-// Save game state (without the heavy map data)
-const coder = new Coder([GameSession]);
-const encoded = coder.encode(session);
-
-// Load game state (restore external dependencies)
-const decoded = coder.decode<GameSession>(encoded, {
-  externalReferences: {
-    gameMap: gameMap,
-    playerManager: playerManager
-  }
-});
-
-// decoded.map === gameMap (same reference)
-// decoded.playerManager === playerManager (same reference)
-```
-
-## Error Handling
-
-External references throw errors when required references are missing:
-
-```typescript
-const encoded = coder.encode(gameState);
-
-// ❌ Throws error: External reference "gameContext" not found
-const decoded = coder.decode<GameState>(encoded, { externalReferences: {} });
-
-// ✅ Works correctly
-const decoded = coder.decode<GameState>(encoded, { 
-  externalReferences: { gameContext: context } 
-});
-```
 
 ## Decorator Conflicts
 
@@ -236,11 +148,3 @@ class Example {
   service!: Service;
 }
 ```
-
-<Callout type="info">
-External references are perfect for dependency injection patterns, avoiding circular dependencies, and keeping your serialized data focused on the essential state while maintaining references to external services or resources.
-</Callout>
-
-<Callout type="tip">
-Use external references when you have objects that are expensive to serialize (like large maps or databases) or when you need to maintain references to singleton services across serialization boundaries.
-</Callout>

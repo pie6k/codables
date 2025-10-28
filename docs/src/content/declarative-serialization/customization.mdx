@@ -121,7 +121,7 @@ class ComplexType {
 
 ## Selective Property Encoding
 
-Use the `keys` array to specify exactly which properties to encode:
+Instead of using `@codable()` decorator, you can use `keys` option to specify exactly which properties to encode.
 
 ```typescript
 @codableClass("SelectiveType", { keys: ["name", "email"] })
@@ -131,28 +131,9 @@ class SelectiveType {
   password: string; // Not encoded
   internalId: string; // Not encoded
 
-  constructor(data: Pick<SelectiveType, "name" | "email" | "password" | "internalId">) {
+  constructor(data: Memberwise<SelectiveType, "name" | "email">) {
     this.name = data.name;
     this.email = data.email;
-    this.password = data.password;
-    this.internalId = data.internalId;
   }
 }
-
-const coder = new Coder([SelectiveType]);
-const instance = new SelectiveType({
-  name: "John",
-  email: "john@example.com", 
-  password: "secret123",
-  internalId: "internal-456"
-});
-
-const encoded = coder.encode(instance);
-// { $$SelectiveType: [{ name: "John", email: "john@example.com" }] }
-// password and internalId are not included
 ```
-
-
-<Callout type="info">
-Key mapping works in both directions - during encoding, properties are mapped to the specified keys, and during decoding, the keys are mapped back to the original property names.
-</Callout>

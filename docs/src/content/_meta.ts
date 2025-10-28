@@ -6,5 +6,4 @@ export default {
   security: "Security",
   "format-escaping": "Format Escaping",
   performance: "Performance",
-  comparisons: "Comparisons",
 };

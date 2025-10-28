@@ -1,4 +1,5 @@
 import { Coder } from "../Coder";
+import { Memberwise, MemberwiseExclude } from "../decorators";
 import { codable } from "../decorators/codable";
 import { codableClass } from "../decorators/codableClass";
 import { getCodableProperties } from "../decorators/properties";
@@ -204,7 +205,7 @@ describe("custom constructor requires proper options", () => {
     class Foo {
       age!: number;
 
-      constructor(input: { age: number }) {
+      constructor(input: Memberwise<Foo>) {
         Object.assign(this, input);
       }
     }
@@ -282,7 +283,7 @@ describe("constructor", () => {
 
       notCodable = "notCodable";
 
-      constructor(input: Pick<Foo, "foo">) {
+      constructor(input: MemberwiseExclude<Foo, "notCodable">) {
         this.foo = input.foo;
         calls.push(input);
       }

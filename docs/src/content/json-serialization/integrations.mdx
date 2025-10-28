@@ -6,7 +6,7 @@ Codables integrates seamlessly with common web development patterns. Here are pr
 
 ## Local Storage
 
-Create a type-safe wrapper for localStorage that handles complex types:
+Create a type-safe wrapper for localStorage that handles complex data types:
 
 ```typescript
 import { stringify, parse } from "codables";
@@ -145,94 +145,10 @@ const loaded = projectStorage.load();
 // All types preserved: Date, Map, etc.
 ```
 
-## State Management
+## Summary
 
-Integrate with state management libraries:
-
-```typescript
-import { createStore } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
-import { stringify, parse } from "codables";
-
-interface AppState {
-  user: { name: string; loginDate: Date } | null;
-  cache: Map<string, any>;
-  settings: Set<string>;
-}
-
-const useAppStore = createStore<AppState>()(
-  subscribeWithSelector((set, get) => ({
-    user: null,
-    cache: new Map(),
-    settings: new Set(),
-
-    // Actions
-    setUser: (user: AppState["user"]) => set({ user }),
-    addToCache: (key: string, value: any) => 
-      set(state => ({ 
-        cache: new Map(state.cache).set(key, value) 
-      })),
-    
-    // Persistence
-    save: () => {
-      const state = get();
-      localStorage.setItem("app-state", stringify(state));
-    },
-    
-    load: () => {
-      const stored = localStorage.getItem("app-state");
-      if (stored) {
-        const state = parse(stored);
-        set(state);
-      }
-    }
-  }))
-);
-```
-
-## Database Serialization
-
-Store complex objects in databases that only support JSON:
-
-```typescript
-import { stringify, parse } from "codables";
-
-// Database model with Codables
-class DatabaseModel {
-  constructor(private db: any) {}
-
-  async save<T>(table: string, id: string, data: T): Promise<void> {
-    await this.db.collection(table).doc(id).set({
-      data: stringify(data),
-      updatedAt: new Date().toISOString()
-    });
-  }
-
-  async load<T>(table: string, id: string): Promise<T | null> {
-    const doc = await this.db.collection(table).doc(id).get();
-    if (!doc.exists) return null;
-    
-    return parse(doc.data().data);
-  }
-}
-
-// Usage
-const db = new DatabaseModel(firebaseDb);
-
-const gameSession = {
-  id: "session-123",
-  players: new Map([
-    ["player1", { name: "Alice", score: 100, joinedAt: new Date() }]
-  ]),
-  createdAt: new Date(),
-  settings: new Set(["multiplayer", "hard-mode"])
-};
-
-await db.save("game-sessions", "session-123", gameSession);
-const loaded = await db.load("game-sessions", "session-123");
-// All complex types preserved
-```
+Everywhere where you work with JSON, you can easily drop in Codables to seamlessly handle complex data types.
 
 <Callout type="info">
-These integration patterns work with any JavaScript environment - browser, Node.js, or edge runtimes. Codables handles the serialization complexity so you can focus on your application logic.
+These integration patterns work with any JavaScript environment - browser, Node.js, or edge runtimes.
 </Callout>
