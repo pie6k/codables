@@ -2,7 +2,8 @@ import { Coder } from "../Coder";
 import { createCoderType } from "../CoderType";
 import { codable } from "../decorators/codable";
 import { codableClass } from "../decorators/codableClass";
-import { observable, isObservableSet, autorun, action, isObservableMap } from "mobx";
+import { observable, isObservableSet, autorun, action, isObservableMap, computed } from "mobx";
+import { combineDecorators } from "../decorators/utils";
 
 const $$observableSet = createCoderType(
   "_Set",
@@ -18,16 +19,18 @@ const $$observableMap = createCoderType(
   (entries) => observable.map(entries),
 );
 
+const $codable: typeof codable = function () {
+  return combineDecorators(codable(), observable);
+};
+
 describe("misc", () => {
   it("semi realistic example", () => {
     @codableClass("Project")
     class Project {
-      @codable()
-      @observable
+      @$codable()
       accessor scenes: Set<Scene> = new Set([]);
 
-      @codable()
-      @observable
+      @$codable()
       accessor settings: Map<string, string> = new Map([]);
 
       @action
@@ -46,9 +49,13 @@ describe("misc", () => {
 
     @codableClass("Scene")
     class Scene {
-      @codable()
-      @observable
+      @$codable()
       accessor zooms: Array<Zoom> = [];
+
+      @computed
+      get duration() {
+        return this.zooms.reduce((acc, zoom) => acc + zoom.duration, 0);
+      }
 
       @action
       addZoom(zoom: Zoom) {
@@ -58,17 +65,19 @@ describe("misc", () => {
 
     @codableClass("Zoom")
     class Zoom {
-      @codable()
-      @observable
+      @$codable()
       accessor start!: number;
 
-      @codable()
-      @observable
+      @$codable()
       accessor end!: number;
 
-      @codable()
-      @observable
+      @$codable()
       accessor scale!: number;
+
+      @computed
+      get duration() {
+        return this.end - this.start;
+      }
 
       constructor(input: Pick<Zoom, "start" | "end" | "scale">) {
         Object.assign(this, input);
@@ -187,5 +196,50 @@ describe("misc", () => {
     expect(decoded2.settings.size).toBe(2);
     expect(decoded2.settings.get("theme")).toBe("dark");
     expect(decoded2.settings.get("language")).toBe("en");
+  });
+});
+
+describe("from readme", () => {
+  it("encode", () => {
+    @codableClass("Player")
+    class Player {
+      @codable() name: string;
+      @codable() score: number;
+
+      constructor(data: Pick<Player, "name" | "score">) {
+        this.name = data.name;
+        this.score = data.score;
+      }
+    }
+
+    @codableClass("GameState")
+    class GameState {
+      @codable() players: Set<Player> = new Set();
+      @codable() createdAt = new Date(2025, 10, 28);
+
+      @codable() activePlayer: Player | null = null;
+
+      addPlayer(player: Player) {
+        this.players.add(player);
+        this.activePlayer = player;
+      }
+    }
+
+    const coder = new Coder([Player, GameState]);
+
+    const gameState = new GameState();
+    gameState.addPlayer(new Player({ name: "Foo", score: 100 }));
+
+    expect(coder.encode(gameState)).toEqual({
+      $$GameState: [
+        {
+          players: {
+            $$Set: [{ $$Player: [{ name: "Foo", score: 100 }] }],
+          },
+          createdAt: { $$Date: "2025-11-27T23:00:00.000Z" },
+          activePlayer: { $$ref: "/$$GameState/0/players/$$Set/0" },
+        },
+      ],
+    });
   });
 });

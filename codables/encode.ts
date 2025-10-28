@@ -20,32 +20,23 @@ function getShouldEscapeKey(key: string) {
 }
 
 function getShouldEscapeMaybeTag(input: Record<string, any>): boolean {
-  return (
-    input.length === 2 &&
-    typeof input[0] === "string" &&
-    getShouldEscapeKey(input[0])
-  );
+  return input.length === 2 && typeof input[0] === "string" && getShouldEscapeKey(input[0]);
 }
 
-export function encodeInput(
-  input: unknown,
-  encodeContext: EncodeContext,
-  coder: Coder,
-  path: string,
-): JSONValue {
+export function encodeInput(input: unknown, encodeContext: EncodeContext, coder: Coder, path: string): JSONValue {
   const codableTypeOf = getCodableTypeOf(input);
 
   switch (codableTypeOf) {
     case "primitive":
       return input as JSONPrimitive;
     case "special-number":
-      return $$num.encodeTag(input as number);
+      return $$num.encodeTag(input as number, encodeContext);
     case "symbol":
-      return $$symbol.encodeTag(input as symbol);
+      return $$symbol.encodeTag(input as symbol, encodeContext);
     case "bigint":
-      return $$bigInt.encodeTag(input as bigint);
+      return $$bigInt.encodeTag(input as bigint, encodeContext);
     case "undefined":
-      return $$undefined.encodeTag(input as undefined);
+      return $$undefined.encodeTag(input as undefined, encodeContext);
     case "function":
       return null;
   }
@@ -90,7 +81,7 @@ export function encodeInput(
 
     return matchingType.createTag(
       encodeInput(
-        matchingType.encode(input),
+        matchingType.encode(input, encodeContext),
         encodeContext,
         coder,
         addPathSegment(path, matchingType.tagKey),
@@ -104,12 +95,7 @@ export function encodeInput(
     const result: any[] = [];
 
     for (let i = 0; i < input.length; i++) {
-      result[i] = encodeInput(
-        input[i],
-        encodeContext,
-        coder,
-        addPathSegment(path, i),
-      );
+      result[i] = encodeInput(input[i], encodeContext, coder, addPathSegment(path, i));
     }
 
     return result;
@@ -146,12 +132,7 @@ export function encodeInput(
      */
     if (getIsForbiddenProperty(key)) continue;
 
-    result[key] = encodeInput(
-      input[key],
-      encodeContext,
-      coder,
-      addPathSegment(path, key),
-    );
+    result[key] = encodeInput(input[key], encodeContext, coder, addPathSegment(path, key));
   }
 
   return result;

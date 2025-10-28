@@ -1,29 +1,40 @@
-import {
-  AnyClass,
-  ClassDecorator,
-  MakeRequired,
-  MemberwiseClass,
-} from "./types";
-import {
-  ClassDecoder,
-  ClassEncoder,
-  createClassDecoder,
-  createDefaultClassEncoder,
-} from "./encode";
+import { AnyClass, ClassDecorator, MakeRequired, MemberwiseClass } from "./types";
+import { ClassDecoder, ClassEncoder, createClassDecoder, createDefaultClassEncoder } from "./encode";
+import { CodableClassFieldsMap, FieldMetadata, codableClassFieldsRegistry, registerCodableClass } from "./registry";
+import { CoderType, createCoderType } from "../CoderType";
 
 import { CodableClassDependencies } from "./dependencies";
-import { createCoderType } from "../CoderType";
-import { getCodableProperties } from "./properties";
 import { getPrototypeChainLength } from "./prototype";
 import { narrowType } from "../utils/assert";
-import { registerCodableClass } from "./registry";
 
 type StringOnly<T> = T extends string ? T : never;
+
+export type CodableClassKeys<T extends AnyClass> = Array<keyof InstanceType<T>> | CodableClassFieldsMap<T>;
+
+type CodableClassKeysInput<T extends AnyClass> = Array<keyof InstanceType<T>> | Record<keyof InstanceType<T>, string>;
+
+function resolveKeys<T extends AnyClass>(keys: CodableClassKeysInput<T>): CodableClassFieldsMap<T> {
+  if (Array.isArray(keys)) {
+    const entries = keys.map((key) => [key, {} as FieldMetadata] as const);
+
+    return new Map(entries);
+  }
+
+  const entries = Object.entries(keys).map(([key, value]) => {
+    return [
+      //
+      key,
+      { encodeAs: value } as FieldMetadata,
+    ] as const;
+  });
+
+  return new Map(entries);
+}
 
 interface CodableClassOptions<T extends AnyClass> {
   dependencies?: CodableClassDependencies;
   encode?: ClassEncoder<T>;
-  keys?: Array<keyof InstanceType<T>>;
+  keys?: CodableClassKeysInput<T>;
 }
 
 type CodableClassDecoratorArgs<T extends AnyClass> =
@@ -47,15 +58,10 @@ export function codableClass<T extends AnyClass>(
   return (Class: T, context: ClassDecoratorContext<T>) => {
     const isUsingDefaultEncoder = maybeOptions?.encode === undefined;
 
-    const keysFromOptions = maybeOptions?.keys?.filter(getIsString) ?? [];
+    const keysFromOptions = resolveKeys(maybeOptions?.keys ?? []);
 
-    const encoder: ClassEncoder<T> =
-      maybeOptions?.encode ?? createDefaultClassEncoder(Class, keysFromOptions);
-
-    const decoder: ClassDecoder<T> = createClassDecoder(
-      Class,
-      isUsingDefaultEncoder,
-    );
+    const encoder: ClassEncoder<T> = maybeOptions?.encode ?? createDefaultClassEncoder(Class, keysFromOptions);
+    const decoder: ClassDecoder<T> = createClassDecoder(Class, isUsingDefaultEncoder);
 
     const type = createCoderType(
       name,
@@ -69,6 +75,18 @@ export function codableClass<T extends AnyClass>(
       getPrototypeChainLength(Class),
     );
 
-    registerCodableClass(Class, type, maybeOptions?.dependencies);
+    registerCodableClass(context.metadata, {
+      name,
+      coderType: type as CoderType<any, any>,
+      dependencies: maybeOptions?.dependencies,
+    });
+
+    const fieldsMap = codableClassFieldsRegistry.getOrInit(context.metadata, () => new Map());
+
+    for (const [key, metadata] of keysFromOptions.entries()) {
+      if (fieldsMap.has(key)) continue;
+
+      fieldsMap.set(key, metadata);
+    }
   };
 }

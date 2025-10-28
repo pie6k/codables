@@ -9,17 +9,11 @@ import { getIsForbiddenProperty } from "./utils/security";
 import { getIsObject } from "./is";
 import { narrowType } from "./utils/assert";
 
-function resolveRefAlias<T>(
-  input: RefAlias,
-  context: DecodeContext,
-  currentPath: string,
-): T {
+function resolveRefAlias<T>(input: RefAlias, context: DecodeContext, currentPath: string): T {
   const referencedObject = context.resolveRefAlias(input.$$ref);
 
   if (!referencedObject) {
-    console.warn(
-      `Reference could not be resolved while decoding (${input.$$ref}) at ${currentPath}`,
-    );
+    console.warn(`Reference could not be resolved while decoding (${input.$$ref}) at ${currentPath}`);
     /**
      * TODO: Assumption here is that data is always encoded and decoded in the same order,
      * aka if we encode aka. meet some object as the first, it will also be decoded as the first
@@ -46,9 +40,7 @@ function resolveTypeTag<T>(
   const matchingType = coder.getTypeByName(typeName);
 
   if (!matchingType) {
-    console.warn(
-      `Unknown custom type: ${typeName} at ${path}. Returning the raw value.`,
-    );
+    console.warn(`Unknown custom type: ${typeName} at ${path}. Returning the raw value.`);
     return tag[tagKey] as T;
   }
 
@@ -56,22 +48,12 @@ function resolveTypeTag<T>(
    * Decode data is present at eg input["$$set"], but it might contain some nested data that
    * needs to be decoded first.
    */
-  const decodedTypeInput = decodeInput(
-    tag[tagKey],
-    context,
-    coder,
-    addPathSegment(path, tagKey),
-  );
+  const decodedTypeInput = decodeInput(tag[tagKey], context, coder, addPathSegment(path, tagKey));
 
-  return matchingType.decode(decodedTypeInput) as T;
+  return matchingType.decode(decodedTypeInput, context) as T;
 }
 
-function decodeArray<T>(
-  input: any[],
-  context: DecodeContext,
-  coder: Coder,
-  path: string,
-): T {
+function decodeArray<T>(input: any[], context: DecodeContext, coder: Coder, path: string): T {
   const result: any[] = [];
 
   context.registerRef(path, result);
@@ -91,12 +73,7 @@ function decodeArray<T>(
   return result as T;
 }
 
-function decodeRecord<T>(
-  input: Record<string, any>,
-  context: DecodeContext,
-  coder: Coder,
-  path: string,
-): T {
+function decodeRecord<T>(input: Record<string, any>, context: DecodeContext, coder: Coder, path: string): T {
   const result: Record<string, any> = {};
 
   context.registerRef(path, result);
@@ -125,12 +102,7 @@ function unescapeTag(input: Tag) {
   };
 }
 
-export function decodeInput<T>(
-  input: JSONValue,
-  context: DecodeContext,
-  coder: Coder,
-  path: string,
-): T {
+export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: Coder, path: string): T {
   let decodableTypeOf: DecodableTypeOf = getDecodableTypeOf(input, context);
 
   switch (decodableTypeOf) {
@@ -152,12 +124,7 @@ export function decodeInput<T>(
     }
 
     case "record": {
-      return decodeRecord<T>(
-        input as Record<string, any>,
-        context,
-        coder,
-        path,
-      );
+      return decodeRecord<T>(input as Record<string, any>, context, coder, path);
     }
   }
 

@@ -4,6 +4,10 @@ import { RefAlias, Tag, getTagValue } from "./format";
 import { getDecodableTypeOf } from "./utils/typeof";
 import { narrowType } from "./utils/assert";
 
+export interface DecodeOptions {
+  externalReferences?: Record<string, unknown>;
+}
+
 export function analyzeEncodedData(data: JSONValue, context: DecodeContext) {
   const decodableTypeOf = getDecodableTypeOf(data, context);
   switch (decodableTypeOf) {
@@ -75,8 +79,15 @@ export class DecodeContext {
     return this.resolvedRefs.get(path) ?? null;
   }
 
-  constructor(data: JSONValue) {
+  readonly externalReferencesMap: Map<string, unknown>;
+
+  constructor(
+    data: JSONValue,
+    readonly options?: DecodeOptions,
+  ) {
     analyzeEncodedData(data, this);
+
+    this.externalReferencesMap = new Map(Object.entries(options?.externalReferences ?? {}));
 
     this.hasRefAliases = this.presentRefAliases.size > 0;
   }

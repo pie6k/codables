@@ -1,6 +1,6 @@
 type WithMetadata<T> = T & { [Symbol.metadata]?: DecoratorMetadata };
 
-function getMetadataKey<T extends object>(Class: T): DecoratorMetadata | null {
+export function getMetadataKey<T extends object>(Class: T): DecoratorMetadata | null {
   return (Class as WithMetadata<T>)[Symbol.metadata] ?? null;
 }
 
@@ -10,8 +10,6 @@ if (!Symbol.metadata) {
 
 export class PrivateMetadata<T> {
   private registry = new WeakMap<DecoratorMetadata, T>();
-
-  constructor(private readonly defaultValue: () => T) {}
 
   getFor(Class: object) {
     const key = getMetadataKey(Class);
@@ -25,21 +23,29 @@ export class PrivateMetadata<T> {
     return this.registry.get(key) ?? null;
   }
 
-  init(key: DecoratorMetadata): T {
+  getOrInit(key: DecoratorMetadata, initializer: () => T) {
     if (this.registry.has(key)) return this.registry.get(key)!;
 
-    const value = this.defaultValue();
+    const value = initializer();
 
     this.registry.set(key, value);
 
     return value;
   }
 
-  isInitialized(Class: object) {
-    const key = getMetadataKey(Class);
-
-    if (!key) throw new Error("Metadata key not found");
-
+  has(key: DecoratorMetadata) {
     return this.registry.has(key);
+  }
+
+  set(key: DecoratorMetadata, value: T) {
+    this.registry.set(key, value);
+  }
+
+  init(key: DecoratorMetadata, value: T) {
+    if (this.registry.has(key)) return this.registry.get(key)!;
+
+    this.registry.set(key, value);
+
+    return value;
   }
 }

@@ -1,34 +1,34 @@
+import { PrivateMetadata, getMetadataKey } from "./PrivateMetadata";
+import { codableClassFieldsRegistry, externalClassFieldsRegistry } from "./registry";
+
 import { AnyClass } from "./types";
-import { PrivateMetadata } from "./metadata";
 
-const fieldsMetadata = new PrivateMetadata(() => new Map<string, any>());
-
-type CodableFieldDecoratorContext<T, V> =
-  | ClassFieldDecoratorContext<T, V>
-  | ClassAccessorDecoratorContext<T, V>;
+type CodableFieldDecoratorContext<T, V> = ClassFieldDecoratorContext<T, V> | ClassAccessorDecoratorContext<T, V>;
 
 export function getRegisteredCodableFields(Class: AnyClass) {
-  return fieldsMetadata.getFor(Class);
+  return codableClassFieldsRegistry.getFor(Class);
 }
 
-export function codable<T, V>() {
-  return function codable<T, V>(
-    initialValue: any,
-    context: CodableFieldDecoratorContext<T, V>,
-  ) {
+interface CodableOptions {
+  encodeAs?: string;
+}
+
+export function codable<T, V>(options?: CodableOptions) {
+  return function codable<T, V>(initialValue: any, context: CodableFieldDecoratorContext<T, V>) {
     if (context.kind !== "accessor" && context.kind !== "field") {
-      throw new Error(
-        "Codable decorator can only be used on fields or accessors",
-      );
+      throw new Error("Codable decorator can only be used on fields or accessors");
     }
 
     const isSymbolName = typeof context.name === "symbol";
 
-    if (isSymbolName)
-      throw new Error("Symbol property names are not supported");
+    if (isSymbolName) throw new Error("Symbol property names are not supported");
 
-    const codableMetadata = fieldsMetadata.init(context.metadata);
+    if (externalClassFieldsRegistry.get(context.metadata)?.has(context.name)) {
+      throw new Error("Codable decorator cannot be used on external properties");
+    }
 
-    codableMetadata.set(context.name, initialValue);
+    const fieldsMap = codableClassFieldsRegistry.getOrInit(context.metadata, () => new Map());
+
+    fieldsMap.set(context.name, { encodeAs: options?.encodeAs });
   };
 }

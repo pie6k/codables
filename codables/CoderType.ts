@@ -1,10 +1,13 @@
 import { Tag, TagKey } from "./format";
 
+import { DecodeContext } from "./DecodeContext";
+import { EncodeContext } from "./EncodeContext";
+
 interface CoderTypeDefinition<Item, Data> {
   name: string;
   canHandle: (value: unknown) => value is Item;
-  encode: (data: Item) => Data;
-  decode: (data: Data) => Item;
+  encode: (data: Item, context: EncodeContext) => Data;
+  decode: (data: Data, context: DecodeContext) => Item;
   priority?: number;
 }
 
@@ -28,16 +31,16 @@ export class CoderType<Item = any, Data = any> {
 
   readonly tagKey: TagKey<typeof this.name>;
 
-  encode(value: Item): Data {
-    return this.definition.encode(value);
+  encode(value: Item, context: EncodeContext): Data {
+    return this.definition.encode(value, context);
   }
 
-  encodeTag(value: Item): Tag<Data, typeof this.name> {
-    return createTag(this.name, this.encode(value));
+  encodeTag(value: Item, context: EncodeContext): Tag<Data, typeof this.name> {
+    return createTag(this.name, this.encode(value, context));
   }
 
-  decode(data: Data): Item {
-    return this.definition.decode(data);
+  decode(data: Data, context: DecodeContext): Item {
+    return this.definition.decode(data, context);
   }
 
   canHandle(value: unknown): value is Item {
@@ -52,8 +55,8 @@ export class CoderType<Item = any, Data = any> {
 export function createCoderType<Item, Data>(
   name: string,
   canHandle: (value: unknown) => value is Item,
-  encode: (data: Item) => Data,
-  decode: (data: Data) => Item,
+  encode: (data: Item, context: EncodeContext) => Data,
+  decode: (data: Data, context: DecodeContext) => Item,
   priority?: number,
 ): CoderType<Item, Data> {
   return new CoderType({

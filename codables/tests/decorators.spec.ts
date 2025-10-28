@@ -10,14 +10,12 @@ describe("decorators", () => {
       @codable()
       foo: string = "foo";
       @codable()
-      bar: Set<string> = new Set([]);
+      bar: Set<string> = new Set(["bar"]);
     }
 
     const coder = new Coder([Foo]);
 
     const foo = new Foo();
-    foo.foo = "foo";
-    foo.bar = new Set(["bar"]);
 
     const encoded = coder.encode(foo);
 

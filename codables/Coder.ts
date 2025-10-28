@@ -2,17 +2,18 @@ import * as builtinTypesMap from "./builtin";
 
 import { AnyCodableClass, JSONValue } from "./types";
 import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
+import { DecodeContext, DecodeOptions } from "./DecodeContext";
 import { EncodeContext, EncodeOptions } from "./EncodeContext";
 import { assert, assertGet } from "./utils/assert";
 import { getCodableClassType, getIsCodableClass } from "./decorators/registry";
 
+import { $$externalReference } from "./ExternalReference";
 import { AnyClass } from "./decorators/types";
-import { DecodeContext } from "./DecodeContext";
 import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
 
-const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(getIsCoderType);
+const DEFAULT_TYPES = [...Object.values(builtinTypesMap), $$externalReference].filter(getIsCoderType);
 
 function getSortedTypes(types: CoderType[]) {
   return types.sort((a, b) => {
@@ -135,8 +136,8 @@ export class Coder {
     return encodeInput(value, encodeContext, this, "/");
   }
 
-  decode<T>(value: JSONValue): T {
-    const context = new DecodeContext(value);
+  decode<T>(value: JSONValue, options?: DecodeOptions): T {
+    const context = new DecodeContext(value, options);
 
     if (context.isPlainJSON) return copyJSON(value) as T;
 
@@ -176,8 +177,8 @@ export function createCoder(extraTypes: CoderType[] = []) {
 
 export const defaultCoder = createCoder();
 
-export function decode<T>(value: JSONValue): T {
-  return defaultCoder.decode(value);
+export function decode<T>(value: JSONValue, options?: DecodeOptions): T {
+  return defaultCoder.decode(value, options);
 }
 
 export function encode<T>(value: T): JSONValue {

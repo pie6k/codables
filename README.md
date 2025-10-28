@@ -1,10 +1,126 @@
 # Codables
 
-A high-performance, type-safe JSON serialization library that supports complex types like `Date`, `BigInt`, `Map`, `Set`, `RegExp`, `Symbol`,circular references, and custom classes.
+Codables is a high-performance, extensible JSON serializer with support for complex types and a framework that makes coding serializable (aka codable) classes much easier.
 
-Codables makes it easier to automatically handle custom classes with nested, complex data through single source of truth, decorator-based serialization.
+[Open playground](https://pie6k.github.io/codables/)
 
-## Motivation
+# Quick start
+
+## JSON serialization
+
+```ts
+import { encode, decode } from "codables";
+
+const data = {
+  date: new Date("2025-01-01"),
+  set: new Set(["a", "b", "c"]),
+  map: new Map([["key", "value"]]),
+};
+
+const encoded = encode(data);
+/**
+ * Will return a valid, enhanced JSON:
+ * {
+ *   date: { $$date: "2025-01-01T00:00:00.000Z" },
+ *   set: { $$set: ["a", "b", "c"] },
+ *   map: { $$map: [["key", "value"]] },
+ * }
+ */
+const decoded = decode(encoded); // Will decode it back to the original input copy
+```
+
+## Serializing custom classes
+
+First, let's define some classes and mark them as codable.
+
+```typescript
+import { codableClass, codable, Coder } from "codables";
+
+// Let's define some classes and mark them as codable
+
+@codableClass("Player")
+class Player {
+  @codable() name: string;
+  @codable() score: number;
+
+  constructor(data: Pick<Player, "name" | "score">) {
+    this.name = data.name;
+    this.score = data.score;
+  }
+}
+
+@codableClass("GameState", { dependencies: [Player] })
+class GameState {
+  @codable() players: Set<Player> = new Set();
+  @codable() createdAt = new Date();
+
+  @codable() activePlayer: Player | null = null;
+
+  addPlayer(player: Player) {
+    this.players.add(player);
+    this.activePlayer = player;
+  }
+}
+```
+
+Now, let's create a custom coder instance that is aware of our custom classes.
+
+```ts
+// Note: we only have to pass the GameState class, as it defined other codable classes it uses
+const gameCoder = new Coder([GameState]);
+```
+
+Now, let's create some instances the same way you would do normally.
+
+```ts
+const gameState = new GameState();
+
+gameState.addPlayer(new Player({ name: "Foo", score: 100 }));
+```
+
+Finally, we can encode the data into a JSON-compatible format.
+
+```ts
+const encodedGameState = gameCoder.encode(gameState);
+console.info(encodedGameState);
+```
+
+It will return human-readable, JSON-compatible format that maintains all reference equalities and instance types.
+
+```json
+{
+  "$$GameState": [
+    {
+      "players": {
+        "$$Set": [
+          {
+            "$$Player": [{ "name": "Foo", "score": 100 }]
+          }
+        ]
+      },
+      "createdAt": { "$$Date": "2025-10-28T09:13:27.899Z" },
+      "activePlayer": { "$$ref": "/$$GameState/0/players/$$Set/0" }
+    }
+  ]
+}
+```
+
+Now, we can decode the data back to get exact, deep copy of the original data with all custom types and reference equalities preserved.
+
+```ts
+const decodedGameState = coder.decode<GameState>(encodedGameState);
+
+const [firstPlayer] = decodedGameState.players;
+
+// All instances are correctly restored
+firstPlayer instanceof Player;
+
+// Referecne equality is preserved
+firstPlayer === decodedGameState.activePlayer;
+
+// All data is correctly restored
+firstPlayer.name === "Foo";
+```
 
 While there are plenty of JSON serialization libraries, none make working with complex, nested classes truly simple.
 
@@ -53,42 +169,11 @@ function gameStateToData(state: GameState): GameStateData {
 }
 
 function dataToGameState(data: GameStateData): GameState {
-  return new GameState(
-    new Set(data.players.map((p) => new Player(p.name, p.score))),
-    new Date(data.createdAt),
-  );
+  return new GameState(new Set(data.players.map((p) => new Player(p.name, p.score))), new Date(data.createdAt));
 }
 ```
 
 **With Codables - single source of truth:**
-
-```typescript
-import { codableClass, codable, Coder } from "codables";
-
-@codableClass("Player")
-class Player {
-  @codable() name!: string;
-  @codable() score!: number;
-}
-
-@codableClass("GameState")
-class GameState {
-  @codable() players!: Set<Player>;
-  @codable() createdAt!: Date;
-}
-
-const coder = new Coder();
-coder.register(Player, GameState);
-
-// That's it! Serialization is automatic
-const gameState = new GameState(
-  new Set([new Player("Alice", 100), new Player("Bob", 200)]),
-  new Date(),
-);
-
-const encoded = coder.encode(gameState); // Automatic serialization
-const decoded = coder.decode(encoded); // Automatic deserialization
-```
 
 Codables lets you work with your objects naturally while seamlessly persisting and transmitting them.
 

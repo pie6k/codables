@@ -4,24 +4,28 @@ import { AnyClass } from "./types";
 
 export type CodableClassDependencies = Thunk<AnyClass[]>;
 
-const dependenciesRegistry = new WeakMap<AnyClass, CodableClassDependencies>();
+const dependenciesRegistry = new WeakMap<DecoratorMetadata, CodableClassDependencies>();
 
-export function registerCodableClassDependencies<T extends AnyClass>(
-  Class: T,
-  dependencies: CodableClassDependencies,
-) {
-  if (dependenciesRegistry.has(Class)) {
-    throw new Error(
-      `Codable class "${Class.name}" already registered dependencies`,
-    );
-  }
+function getFlatDependencies(Class: AnyClass) {
+  const key = Class[Symbol.metadata];
 
-  dependenciesRegistry.set(Class, dependencies);
+  if (!key) return null;
+
+  return dependenciesRegistry.get(key) ?? null;
 }
 
-export function resolveCodableClassDependencies<T extends AnyClass>(
-  Class: T,
-): AnyClass[] {
+export function registerCodableClassDependencies<T extends AnyClass>(
+  key: DecoratorMetadata,
+  dependencies: CodableClassDependencies,
+) {
+  if (dependenciesRegistry.has(key)) {
+    throw new Error(`Codable class already registered dependencies`);
+  }
+
+  dependenciesRegistry.set(key, dependencies);
+}
+
+export function resolveCodableClassDependencies<T extends AnyClass>(Class: T): AnyClass[] {
   const result: Set<AnyClass> = new Set();
 
   let dependenciesToCheck = new Set<AnyClass>([Class]);
@@ -31,7 +35,7 @@ export function resolveCodableClassDependencies<T extends AnyClass>(
     for (const dependency of dependenciesToCheck) {
       if (result.has(dependency)) continue;
       result.add(dependency);
-      const nestedDependencies = dependenciesRegistry.get(dependency);
+      const nestedDependencies = getFlatDependencies(dependency);
 
       if (!nestedDependencies) continue;
 
