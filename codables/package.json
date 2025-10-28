@@ -56,7 +56,8 @@
   "homepage": "https://github.com/pie6k/codables#readme",
   "scripts": {
     "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "bench": "vitest bench tests/benchmark.bench.ts"
   },
   "devDependencies": {
     "@types/jsdom": "^27",
