@@ -5,7 +5,7 @@ import * as prettierPluginEstree from "prettier/plugins/estree";
 
 import { useCallback, useEffect, useState } from "react";
 
-import { Coder } from "codables";
+import { Coder } from "../../../../codables";
 import { Editor } from "@monaco-editor/react";
 import prettier from "prettier/standalone";
 import styled from "styled-components";

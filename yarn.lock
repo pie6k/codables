@@ -3037,7 +3037,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"codables@npm:^0.1.1, codables@workspace:*, codables@workspace:codables":
+"codables@npm:^0.1.1, codables@workspace:codables":
   version: 0.0.0-use.local
   resolution: "codables@workspace:codables"
   dependencies:
@@ -6636,7 +6636,6 @@ __metadata:
     "@types/react-dom": "npm:^18.2.0"
     "@types/styled-components": "npm:^5.1.0"
     "@vitejs/plugin-react": "npm:^5.1.0"
-    codables: "workspace:*"
     gh-pages: "npm:^6.3.0"
     prettier: "npm:^3.6.2"
     react: "npm:^18.2.0"
