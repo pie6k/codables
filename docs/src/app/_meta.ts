@@ -6,4 +6,8 @@ export default {
     type: "page",
     title: "Documentation",
   },
+  playground: {
+    type: "page",
+    title: "Playground",
+  },
 };
