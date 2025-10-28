@@ -12,9 +12,7 @@ import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
 
-const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
-  getIsCoderType,
-);
+const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(getIsCoderType);
 
 function getSortedTypes(types: CoderType[]) {
   return types.sort((a, b) => {
@@ -28,6 +26,10 @@ function createTypesMap(types: CoderType[]) {
   const map = new Map<string, CoderType>();
 
   for (const type of sortedTypes) {
+    if (map.has(type.name)) {
+      throw new Error(`Coder type "${type.name}" already registered`);
+    }
+
     map.set(type.name, type);
   }
 
@@ -103,10 +105,7 @@ export class Coder {
     for (const typeOrClass of typesOrClasses) {
       if (getIsCodableClass(typeOrClass)) {
         if (this.registeredClasses.has(typeOrClass)) continue;
-        const type = assertGet(
-          getCodableClassType(typeOrClass),
-          `Codable class "${typeOrClass.name}" not registered`,
-        );
+        const type = assertGet(getCodableClassType(typeOrClass), `Codable class "${typeOrClass.name}" not registered`);
 
         this.registerType(type);
         this.registeredClasses.add(typeOrClass);
@@ -127,9 +126,7 @@ export class Coder {
     decode: (data: Data) => Item,
     priority?: number,
   ) {
-    return this.registerType(
-      createCoderType(name, canEncode, encode, decode, priority),
-    );
+    return this.registerType(createCoderType(name, canEncode, encode, decode, priority));
   }
 
   encode<T>(value: T, options?: EncodeOptions): JSONValue {

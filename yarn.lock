@@ -345,6 +345,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@codables/root@workspace:."
   dependencies:
+    mobx: "npm:^6.15.0"
     prettier: "npm:^3.6.2"
   languageName: unknown
   linkType: soft
@@ -2660,6 +2661,13 @@ __metadata:
   dependencies:
     minipass: "npm:^7.1.2"
   checksum: 10c0/5aad75ab0090b8266069c9aabe582c021ae53eb33c6c691054a13a45db3b4f91a7fb1bd79151e6b4e9e9a86727b522527c0a06ec7d45206b745d54cd3097bcec
+  languageName: node
+  linkType: hard
+
+"mobx@npm:^6.15.0":
+  version: 6.15.0
+  resolution: "mobx@npm:6.15.0"
+  checksum: 10c0/afbfdc5659caac4ba620d1caca8eb471bbe56746403a8023ae402e27f9e04856394e1529ccf46feb7fdad0c6d695fa1972e8421e7fbfcb1cf453131739a12ac4
   languageName: node
   linkType: hard
 

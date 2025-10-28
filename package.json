@@ -14,6 +14,7 @@
     "playground": "yarn workspace playground"
   },
   "devDependencies": {
+    "mobx": "^6.15.0",
     "prettier": "^3.6.2"
   }
 }
