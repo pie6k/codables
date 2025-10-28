@@ -13,20 +13,16 @@ export class PrivateMetadata<T> {
 
   constructor(private readonly defaultValue: () => T) {}
 
-  getFor(Class: object): T {
+  getFor(Class: object) {
     const key = getMetadataKey(Class);
 
-    if (!key) throw new Error("Metadata key not found");
+    if (!key) return null;
 
     return this.get(key);
   }
 
-  get(key: DecoratorMetadata): T {
-    const metadata = this.registry.get(key);
-
-    if (!metadata) throw new Error("Metadata not found");
-
-    return metadata;
+  get(key: DecoratorMetadata): T | null {
+    return this.registry.get(key) ?? null;
   }
 
   init(key: DecoratorMetadata): T {

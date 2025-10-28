@@ -1,3 +1,4 @@
 export { Coder, encode, decode, parse, stringify } from "./Coder";
-export { codableClass, codable, getIsCodableClass } from "./codableClass";
+export { codableClass } from "./decorators/codableClass";
+export { codable } from "./decorators/codable";
 export { createCoderType, getIsCoderType, CoderType } from "./CoderType";

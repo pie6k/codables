@@ -5,6 +5,7 @@ interface CoderTypeDefinition<Item, Data> {
   canHandle: (value: unknown) => value is Item;
   encode: (data: Item) => Data;
   decode: (data: Data) => Item;
+  priority?: number;
 }
 
 export function createTag<Name extends string, Data>(name: Name, data: Data) {
@@ -19,9 +20,11 @@ export class CoderType<Item = any, Data = any> {
   constructor(readonly definition: CoderTypeDefinition<Item, Data>) {
     this.name = definition.name;
     this.tagKey = `$$${this.name}`;
+    this.priority = definition.priority ?? 0;
   }
 
   readonly name: string;
+  readonly priority: number;
 
   readonly tagKey: TagKey<typeof this.name>;
 
@@ -51,12 +54,14 @@ export function createCoderType<Item, Data>(
   canHandle: (value: unknown) => value is Item,
   encode: (data: Item) => Data,
   decode: (data: Data) => Item,
+  priority?: number,
 ): CoderType<Item, Data> {
   return new CoderType({
     name,
     canHandle,
     encode,
     decode,
+    priority,
   });
 }
 

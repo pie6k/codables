@@ -17,10 +17,11 @@
     "styled-components": "^6.1.0"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^7.28.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/styled-components": "^5.1.0",
-    "@vitejs/plugin-react": "^4.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
     "gh-pages": "^6.3.0",
     "typescript": "^5.9.3",
     "vite": "^5.0.0"

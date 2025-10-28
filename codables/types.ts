@@ -12,11 +12,12 @@ export type AtLeastOne<T> = [T, ...T[]];
 /**
  * A class that can be instantiated without any arguments.
  */
-export type AutoCodableClass<T> = new () => T;
+export type MemberwiseClass<T> = new (input?: Partial<T>) => T;
+export type ClassWithoutInput<T> = new () => T;
 
 /**
  * A class that requires arguments to be known in order to be instantiated.
  */
 export type ManuallyCodableClass<T> = new (...args: AtLeastOne<any>) => T;
 
-export type AnyCodableClass<T> = AutoCodableClass<T> | ManuallyCodableClass<T>;
+export type AnyCodableClass<T> = MemberwiseClass<T> | ManuallyCodableClass<T>;

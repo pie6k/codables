@@ -3,8 +3,10 @@ import * as builtinTypesMap from "./builtin";
 import { AnyCodableClass, JSONValue } from "./types";
 import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
 import { EncodeContext, EncodeOptions } from "./EncodeContext";
-import { getCodableClassType, getIsCodableClass } from "./codableClass";
+import { assert, assertGet } from "./utils/assert";
+import { getCodableClassType, getIsCodableClass } from "./decorators/registry";
 
+import { AnyClass } from "./decorators/types";
 import { DecodeContext } from "./DecodeContext";
 import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
@@ -14,16 +16,65 @@ const DEFAULT_TYPES = [...Object.values(builtinTypesMap)].filter(
   getIsCoderType,
 );
 
+function getSortedTypes(types: CoderType[]) {
+  return types.sort((a, b) => {
+    return b.priority - a.priority;
+  });
+}
+
 function createTypesMap(types: CoderType[]) {
-  return new Map<string, CoderType>(types.map((type) => [type.name, type]));
+  const sortedTypes = getSortedTypes(types);
+
+  const map = new Map<string, CoderType>();
+
+  for (const type of sortedTypes) {
+    map.set(type.name, type);
+  }
+
+  return map;
+}
+
+type CoderTypeOrClass = CoderType | AnyClass;
+
+function resolveCoderTypeOrClass(typeOrClass: CoderTypeOrClass): CoderType {
+  if (typeOrClass instanceof CoderType) {
+    return typeOrClass;
+  }
+
+  const codableClassType = getCodableClassType(typeOrClass);
+
+  if (!codableClassType) {
+    throw new Error(`Codable class "${typeOrClass.name}" not registered`);
+  }
+
+  return codableClassType;
+}
+
+function updateTypesOrderByPriority(currentTypes: Map<string, CoderType>) {
+  const sortedTypes = getSortedTypes([...currentTypes.values()]);
+
+  const needsReordering = sortedTypes.some((type) => type.priority !== 0);
+
+  if (!needsReordering) return;
+
+  currentTypes.clear();
+
+  for (const type of sortedTypes) {
+    currentTypes.set(type.name, type);
+  }
 }
 
 export class Coder {
   private readonly typesMap = new Map<string, CoderType>();
   private readonly registeredClasses = new WeakSet<AnyCodableClass<any>>();
 
-  constructor(extraTypes: CoderType[] = []) {
-    this.typesMap = createTypesMap([...DEFAULT_TYPES, ...(extraTypes ?? [])]);
+  constructor(extraTypes: CoderTypeOrClass[] = []) {
+    const resolvedExtraTypes = extraTypes.map(resolveCoderTypeOrClass);
+    this.typesMap = createTypesMap([...DEFAULT_TYPES, ...resolvedExtraTypes]);
+  }
+
+  private reorderTypes() {
+    updateTypesOrderByPriority(this.typesMap);
   }
 
   getTypeByName(name: string): CoderType | null {
@@ -44,35 +95,25 @@ export class Coder {
 
       this.typesMap.set(type.name, type);
     }
+
+    this.reorderTypes();
   }
 
-  registerClass(...classes: AnyCodableClass<any>[]) {
-    if (this.isDefault) {
-      throw new Error(
-        "Cannot register classes on the default coder. Create a custom coder instance using `new Coder()` and register classes on that instance.",
-      );
-    }
-
-    for (const Class of classes) {
-      const codableClassType = getCodableClassType(Class);
-      if (!codableClassType) continue;
-
-      if (this.registeredClasses.has(Class)) continue;
-
-      this.registerType(codableClassType);
-      this.registeredClasses.add(Class);
-    }
-  }
-
-  register(...typesOrClasses: (AnyCodableClass<any> | CoderType<any, any>)[]) {
+  register(...typesOrClasses: CoderTypeOrClass[]) {
     for (const typeOrClass of typesOrClasses) {
-      if (typeOrClass instanceof CoderType) {
-        this.registerType(typeOrClass);
-      } else if (getIsCodableClass(typeOrClass)) {
-        this.registerClass(typeOrClass);
-      } else {
-        throw new Error(`Invalid type or class: ${typeOrClass}`);
+      if (getIsCodableClass(typeOrClass)) {
+        if (this.registeredClasses.has(typeOrClass)) continue;
+        const type = assertGet(
+          getCodableClassType(typeOrClass),
+          `Codable class "${typeOrClass.name}" not registered`,
+        );
+
+        this.registerType(type);
+        this.registeredClasses.add(typeOrClass);
+        continue;
       }
+
+      return this.registerType(typeOrClass);
     }
   }
 
@@ -84,8 +125,11 @@ export class Coder {
     canEncode: (value: unknown) => value is Item,
     encode: (data: Item) => Data,
     decode: (data: Data) => Item,
+    priority?: number,
   ) {
-    return this.registerType(createCoderType(name, canEncode, encode, decode));
+    return this.registerType(
+      createCoderType(name, canEncode, encode, decode, priority),
+    );
   }
 
   encode<T>(value: T, options?: EncodeOptions): JSONValue {
