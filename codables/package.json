@@ -1,6 +1,6 @@
 {
   "name": "codables",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "High-performance, type-safe JSON serialization library that extends JSON to support complex JavaScript types including Date, BigInt, Map, Set, RegExp, Symbol, typed arrays, circular references, and custom classes.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -14,7 +14,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "keywords": [
     "json",
@@ -58,7 +59,8 @@
     "clean": "rm -rf dist",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "bench": "vitest bench tests/benchmark.bench.ts"
+    "bench": "vitest bench tests/benchmark.bench.ts",
+    "readme": "cp ../README.md ./README.md"
   },
   "devDependencies": {
     "@types/jsdom": "^27",
