@@ -6,6 +6,8 @@ Throw your data at it - [open playground](https://codableslib.com/playground/)
 
 [Read the docs](https://codableslib.com/docs)
 
+## Key Features
+
 - **High-performance**: ~3x faster than SuperJSON ([see benchmark](https://codableslib.com/docs/performance))
 - **Extensible**: By default handles almost every built-in JavaScript type. Easy to extend with custom handled types.
 - **Declarative**: Modern decorators allowing you to mark "what to serialize", not "how to serialize it"
@@ -15,7 +17,15 @@ Throw your data at it - [open playground](https://codableslib.com/playground/)
 - **Framework agnostic**: Works with any JavaScript/TypeScript project
 - **Secure**: Built-in protection against prototype pollution
 
-# Quick Examples
+# Installation
+
+```bash
+npm install codables
+yarn add codables
+pnpm add codables
+```
+
+# Quick start
 
 ## JSON Serialization
 
@@ -51,7 +61,11 @@ const decoded = decode(encoded);
 
 ## Declarative Class Serialization
 
-Eliminate the dual-format problem with modern decorators:
+Eliminate the dual-format problem with modern decorators
+
+### What declarative means here?
+
+It means you mark "what to serialize", not "how to serialize it"
 
 ```typescript
 import { codableClass, codable, Coder } from "codables";
@@ -61,6 +75,7 @@ class Player {
   @codable() name: string;
   @codable() score: number;
 
+  // Note: constructor is not needed for Codables to work, it is here for convenience of creating instances.
   constructor(data: Pick<Player, "name" | "score">) {
     this.name = data.name;
     this.score = data.score;
@@ -91,18 +106,6 @@ const encoded = coder.encode(gameState);
 const decoded = coder.decode<GameState>(encoded);
 // All types, references, and circular dependencies preserved!
 ```
-
-# Key Features
-
-- **🚀 High Performance**: ~3x faster encoding and ~2x faster decoding than SuperJSON
-- **🔒 Type Safety**: Full TypeScript support with compile-time checking and autocompletion
-- **🔄 Reference Preservation**: Handles circular references and maintains object identity automatically
-- **🛡️ Security**: Built-in protection against prototype pollution attacks
-- **🎯 Zero Boilerplate**: No manual conversion logic or separate data interfaces required
-- **🔧 Extensible**: Easy to add custom serialization types with `createCoderType`
-- **📦 Lightweight**: Modular imports - use only what you need (7.3KB gzipped)
-- **🌐 Framework Agnostic**: Works with any JavaScript/TypeScript project
-- **✅ Well Tested**: Comprehensive test coverage including edge cases
 
 # Supported Types
 
@@ -135,17 +138,6 @@ Codables delivers superior performance compared to alternatives:
 
 [View detailed benchmarks →](https://codableslib.com/docs/performance)
 
-# Use Cases
-
-Perfect for applications that need to serialize complex data:
-
-- **Full-stack Applications**: Seamlessly pass rich objects between client and server
-- **State Management**: Persist complex state with types preserved
-- **API Communication**: Send/receive data with native JavaScript types
-- **Database Storage**: Store complex objects while maintaining type information
-- **Real-time Applications**: Efficient serialization for WebSocket/SSE communication
-- **Development Tools**: Serialize debugging information with full type fidelity
-
 # API Overview
 
 ## Core Functions
@@ -162,7 +154,7 @@ const jsonString = stringify(data);
 const restored = parse(jsonString);
 ```
 
-## Class Serialization
+## Declarative Class Serialization
 
 ```typescript
 import { codableClass, codable, Coder } from "codables";
@@ -179,14 +171,16 @@ const decoded = coder.decode<MyClass>(encoded);
 
 ## Custom Types
 
+You can also use lower-level API to create custom types and encode/decode them manually.
+
 ```typescript
 import { createCoderType, Coder } from "codables";
 
 const $$custom = createCoderType(
-  "CustomType",
-  (value) => value instanceof CustomType,
-  (instance) => instance.data,
-  (data) => new CustomType(data),
+  "CustomType", // name of the type
+  (value) => value instanceof CustomType, // how to detect some value should be encoded using this type
+  (instance) => instance.data, // how to encode the value (might return rich data like `Map` or `Set`, or even other custom types)
+  (data) => new CustomType(data), // how to recreate the value from the encoded data
 );
 
 const coder = new Coder([$$custom]);
@@ -204,39 +198,44 @@ Codables includes built-in security measures:
 
 # Comparisons
 
-## vs SuperJSON
+## Benchmark vs SuperJSON
 
-| Feature           | Codables                                     | SuperJSON                     |
-| ----------------- | -------------------------------------------- | ----------------------------- |
-| **Performance**   | 3-4x faster encoding, 1.5-2x faster decoding | Baseline                      |
-| **Class Support** | Built-in decorator framework                 | Manual serialization required |
-| **Format**        | Tagged format (`{ $$Date: "..." }`)          | SuperJSON format              |
-| **Bundle Size**   | Smaller core, modular imports                | Monolithic                    |
-| **Type Safety**   | Full TypeScript support                      | Good TypeScript support       |
+You can run these benchmarks yourself by downloading the repository and running `yarn codables bench`. The benchmark code is available in [`benchmark.bench.ts`](https://github.com/adam/codables/blob/main/codables/tests/benchmark.bench.ts).
+
+### Plain JSON Data (6MB)
+
+| Operation  | Preserve refs                      | Copy refs                          |
+| ---------- | ---------------------------------- | ---------------------------------- |
+| **Encode** | 🟢 **2.87x faster** than SuperJSON | 🟢 **3.64x faster** than SuperJSON |
+| **Decode** | 🟢 **1.11x faster** than SuperJSON | 🟢 **1.10x faster** than SuperJSON |
+
+### Complex Data Structures
+
+It includes deeply nested objects, with repeating references, `Sets`, `Maps`, and `Dates`
+
+| Dataset     | Encode              |                     | Decode                        |                     |
+| ----------- | ------------------- | ------------------- | ----------------------------- | ------------------- |
+|             | **Preserve refs**   | **Copy refs**       | **Preserve refs**             | **Copy refs**       |
+| **Small**   | 🟢 **3.39x faster** | 🟢 **3.91x faster** | 🟢 **1.27x faster**           | 🟢 **1.24x faster** |
+| **Average** | 🟢 **3.51x faster** | 🟢 **3.99x faster** | 🔵 SuperJSON **1.02x faster** | 🟢 **1.36x faster** |
+| **Large**   | 🟢 **3.55x faster** | 🟢 **4.16x faster** | 🔵 SuperJSON **1.01x faster** | 🟢 **1.60x faster** |
+| **Huge**    | 🟢 **3.67x faster** | 🟢 **4.16x faster** | 🟢 **1.24x faster**           | 🟢 **1.67x faster** |
 
 ## Migration from SuperJSON
 
 ```typescript
 // Before
-import { SuperJSON } from "superjson";
-const serialized = SuperJSON.stringify(data);
-const deserialized = SuperJSON.parse(serialized);
-
-// After
-import { stringify, parse } from "codables";
+import { stringify, parse } from "superjson";
 const serialized = stringify(data);
 const deserialized = parse(serialized);
+
+// After
+import { encode, decode } from "codables";
+const serialized = encode(data);
+const deserialized = decode(serialized);
 ```
 
 [Read complete comparison guide →](https://codableslib.com/docs/comparisons)
-
-# Installation
-
-```bash
-npm install codables
-yarn add codables
-pnpm add codables
-```
 
 # Documentation
 
