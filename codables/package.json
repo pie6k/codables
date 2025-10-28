@@ -1,21 +1,20 @@
 {
   "name": "codables",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "High-performance, type-safe JSON serialization library that extends JSON to support complex JavaScript types including Date, BigInt, Map, Set, RegExp, Symbol, typed arrays, circular references, and custom classes.",
   "type": "module",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "import": "./index.ts"
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
-    "index.ts",
-    "*.ts",
-    "utils/",
-    "tests/"
+    "dist"
   ],
   "keywords": [
     "json",
@@ -55,6 +54,8 @@
   },
   "homepage": "https://github.com/pie6k/codables#readme",
   "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "clean": "rm -rf dist",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "bench": "vitest bench tests/benchmark.bench.ts"
@@ -66,6 +67,7 @@
     "jsdom": "^27.0.1",
     "superjson": "^2.2.3",
     "typescript": "^5.9.3",
+    "vite": "^5.0.0",
     "vitest": "^4.0.1"
   }
 }

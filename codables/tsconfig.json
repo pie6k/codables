@@ -8,6 +8,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
+    "declarationDir": "./dist/types",
+    "emitDeclarationOnly": true,
     "outDir": "./dist",
     "resolveJsonModule": true,
     "rootDir": "./",

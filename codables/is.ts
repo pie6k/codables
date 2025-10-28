@@ -29,10 +29,6 @@ export function getIsRecord(value: unknown): value is Record<string, unknown> {
   return valuePrototype === Object.prototype || valuePrototype === null;
 }
 
-export function getIsPrimitive(value: unknown): value is Primitive {
-  return getIsJSONPrimitive(value) || value === undefined;
-}
-
 export function getIsObject(value: unknown): value is object {
   return typeof value === "object" && value !== null;
 }
