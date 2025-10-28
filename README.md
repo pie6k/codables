@@ -8,14 +8,14 @@ Throw your data at it - [open playground](https://codableslib.com/playground/)
 
 ## Key Features
 
-- **High-performance**: ~3x faster than SuperJSON ([see benchmark](https://codableslib.com/docs/performance))
-- **Extensible**: By default handles almost every built-in JavaScript type. Easy to extend with custom handled types.
-- **Declarative**: Modern decorators allowing you to mark "what to serialize", not "how to serialize it"
-- **Zero dependencies**: Fully standalone, no external dependencies. 7.3KB gziped.
-- **Type Safety**: Full TypeScript support with autocompletion and type inference
-- **Well tested**: Every feature is covered by tests. It passes most of SuperJSON tests moved into Codables (including plenty of edge cases)
-- **Framework agnostic**: Works with any JavaScript/TypeScript project
-- **Secure**: Built-in protection against prototype pollution
+- **⚡️ High-performance**: ~3x faster than SuperJSON ([see benchmark](https://codableslib.com/docs/performance))
+- **🔌 Extensible**: By default handles almost every built-in JavaScript type. Easy to extend with custom handled types.
+- **📝 Declarative**: Modern decorators allowing you to mark "what to serialize", not "how to serialize it"
+- **🎯 Zero dependencies**: Fully standalone, no external dependencies. 7.3KB gziped.
+- **🔒 Type Safety**: Full TypeScript support with autocompletion and type inference
+- **✅ Well tested**: Every feature is covered by tests. It passes most of SuperJSON tests moved into Codables (including plenty of edge cases)
+- **🔄 Framework agnostic**: Works with any JavaScript/TypeScript project
+- **🛡️ Secure**: Built-in protection against prototype pollution
 
 # Installation
 
