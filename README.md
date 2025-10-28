@@ -237,6 +237,10 @@ It includes deeply nested objects, with repeating references, `Sets`, `Maps`, an
 
 ## Migration from SuperJSON
 
+For simple JSON serialization, Codables is almost a drop-in replacement for SuperJSON.
+
+For custom types, please read about [custom types](https://codableslib.com/docs/json-serialization/custom-types) in JSON Serialization section.
+
 ```typescript
 // Before
 import { stringify, parse } from "superjson";
@@ -244,9 +248,9 @@ const serialized = stringify(data);
 const deserialized = parse(serialized);
 
 // After
-import { encode, decode } from "codables";
-const serialized = encode(data);
-const deserialized = decode(serialized);
+import { stringify, parse } from "codables";
+const serialized = stringify(data);
+const deserialized = parse(serialized);
 ```
 
 [Read complete comparison guide →](https://codableslib.com/docs/comparisons)
