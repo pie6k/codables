@@ -1,21 +1,20 @@
-import { CodableClassDependencies, registerCodableClassDependencies } from "./dependencies";
 import { PrivateMetadata, getMetadataKey } from "./PrivateMetadata";
 
 import { AnyClass } from "./types";
-import { CoderType } from "../CoderType";
+import { CodableDependencies } from "../dependencies";
+import { CodableType } from "../CodableType";
 
 export interface FieldMetadata {
   encodeAs?: string;
 }
 
-export type ClassCoderType<T extends AnyClass> = CoderType<InstanceType<T>, ConstructorParameters<T>>;
+export type ClassCodableType<T extends AnyClass> = CodableType<InstanceType<T>, ConstructorParameters<T>>;
 
 export type CodableClassFieldsMap<T extends AnyClass = AnyClass> = Map<keyof InstanceType<T>, FieldMetadata>;
 
 export interface CodableClassMetadata<T extends AnyClass = AnyClass> {
   name: string;
-  coderType: ClassCoderType<T>;
-  dependencies?: CodableClassDependencies;
+  codableType: ClassCodableType<T>;
 }
 
 export const codableClassRegistry = new PrivateMetadata<CodableClassMetadata>();
@@ -34,14 +33,14 @@ export function getIsCodableClass<T extends AnyClass>(Class: object): Class is A
   return codableClassRegistry.has(key);
 }
 
-export function getCodableClassType<T extends AnyClass>(Class: T): ClassCoderType<T> | null {
+export function getCodableClassType<T extends AnyClass>(Class: T): ClassCodableType<T> | null {
   const key = getMetadataKey(Class);
 
   if (!key) return null;
 
-  const coderType = codableClassRegistry.get(key)?.coderType;
+  const codableType = codableClassRegistry.get(key)?.codableType;
 
-  if (!coderType) return null;
+  if (!codableType) return null;
 
-  return coderType as CoderType<any, any>;
+  return codableType as CodableType<any, any>;
 }

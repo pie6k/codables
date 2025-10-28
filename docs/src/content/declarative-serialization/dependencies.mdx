@@ -1,0 +1,181 @@
+import { Callout } from 'nextra/components';
+
+# Dependencies
+
+The `dependencies` option in `@codableClass` allows you to specify other codable classes that your class depends on. This enables automatic discovery of nested codable classes, so you only need to register the root class with `Coder`.
+
+## Basic Usage
+
+When your class contains instances of other codable classes, you can specify them as dependencies:
+
+```typescript
+@codableClass("Bar")
+class Bar {
+  @codable()
+  bar: string = "bar";
+}
+
+@codableClass("Foo", { dependencies: [Bar] })
+class Foo {
+  @codable()
+  bar = new Bar();
+}
+
+const coder = new Coder([Foo]); // Only need to register Foo!
+
+const foo = new Foo();
+const encoded = coder.encode(foo);
+// { $$Foo: [{ bar: { $$Bar: [{ bar: "bar" }] } }] }
+
+const decoded = coder.decode<Foo>(encoded);
+// decoded.bar is properly typed as Bar instance
+```
+
+## Automatic Discovery
+
+The key benefit of dependencies is that you only need to pass the root class to `Coder`. The framework automatically discovers and registers all dependent classes:
+
+```typescript
+// Without dependencies - you'd need to register both classes
+const coder = new Coder([Foo, Bar]); // Manual registration
+
+// With dependencies - automatic discovery
+const coder = new Coder([Foo]); // Bar is automatically discovered
+```
+
+This is especially useful in complex applications where you have deep object graphs with many interconnected classes.
+
+## Lazy Dependencies (Thunks)
+
+For circular dependencies, you can use function thunks to defer the dependency resolution:
+
+```typescript
+@codableClass("User")
+class User {
+  @codable()
+  name: string;
+  
+  @codable()
+  posts: Post[] = [];
+
+  constructor(data: Pick<User, "name">) {
+    this.name = data.name;
+  }
+}
+
+@codableClass("Post", { 
+  dependencies: () => [User] // Lazy evaluation with thunk
+})
+class Post {
+  @codable()
+  title: string;
+  
+  @codable()
+  author: User;
+
+  constructor(data: Pick<Post, "title" | "author">) {
+    this.title = data.title;
+    this.author = data.author;
+  }
+}
+
+const coder = new Coder([Post]); // User is discovered lazily
+```
+
+## Why Lazy Loading?
+
+Lazy evaluation prevents compilation errors in circular dependency scenarios:
+
+```typescript
+// ❌ This would cause compilation errors due to circular imports
+@codableClass("A", { dependencies: [B] })
+class A {
+  @codable()
+  b: B;
+}
+
+@codableClass("B", { dependencies: [A] }) // Circular reference!
+class B {
+  @codable()
+  a: A;
+}
+
+// ✅ Use thunks to break the circular dependency
+@codableClass("A", { dependencies: () => [B] })
+class A {
+  @codable()
+  b: B;
+}
+
+@codableClass("B", { dependencies: () => [A] })
+class B {
+  @codable()
+  a: A;
+}
+```
+
+## Complex Dependency Graphs
+
+Dependencies work seamlessly with complex object hierarchies:
+
+```typescript
+@codableClass("Comment")
+class Comment {
+  @codable()
+  text: string;
+  
+  @codable()
+  author: User;
+
+  constructor(data: Pick<Comment, "text" | "author">) {
+    this.text = data.text;
+    this.author = data.author;
+  }
+}
+
+@codableClass("Post", { dependencies: () => [User, Comment] })
+class Post {
+  @codable()
+  title: string;
+  
+  @codable()
+  content: string;
+  
+  @codable()
+  author: User;
+  
+  @codable()
+  comments: Comment[] = [];
+
+  constructor(data: Pick<Post, "title" | "content" | "author">) {
+    this.title = data.title;
+    this.content = data.content;
+    this.author = data.author;
+  }
+}
+
+@codableClass("Blog", { dependencies: () => [Post] })
+class Blog {
+  @codable()
+  name: string;
+  
+  @codable()
+  posts: Post[] = [];
+
+  constructor(data: Pick<Blog, "name">) {
+    this.name = data.name;
+  }
+}
+
+// Only need to register the root class
+const coder = new Coder([Blog]);
+// User, Comment, and Post are all automatically discovered
+```
+
+<Callout type="info">
+Dependencies are resolved lazily when needed, so you can safely use thunks even when circular dependencies aren't present. The framework will handle both eager and lazy dependency resolution automatically.
+</Callout>
+
+<Callout type="tip">
+Use dependencies to keep your `Coder` registration clean and focused. Instead of manually tracking all classes in your object graph, just register the root classes and let the framework discover the rest.
+</Callout>

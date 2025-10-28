@@ -46,7 +46,7 @@ class CustomType {
   constructor(public data: string) {}
 }
 
-const $$custom = createCoderType(
+const $$custom = createCodableType(
   "CustomType",
   (value) => value instanceof CustomType,
   (instance) => instance.data,

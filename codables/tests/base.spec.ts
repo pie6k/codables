@@ -165,7 +165,7 @@ describe("errors", () => {
         (value) => value,
         (value) => value,
       );
-    }).toThrowErrorMatchingInlineSnapshot(`[Error: Coder type "foo" already registered]`);
+    }).toThrowErrorMatchingInlineSnapshot(`[Error: Other codable type with name "foo" already registered]`);
   });
 
   it("should include error stack if includeErrorStack is true", () => {

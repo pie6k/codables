@@ -69,13 +69,13 @@ const decoded = decode(maliciousEncoded);
 Custom types are also protected from prototype pollution:
 
 ```typescript
-import { createCoderType, Coder } from "codables";
+import { createCodableType, Coder } from "codables";
 
 class SafeClass {
   constructor(public data: any) {}
 }
 
-const $$safe = createCoderType(
+const $$safe = createCodableType(
   "SafeClass",
   (value) => value instanceof SafeClass,
   (instance) => instance.data,

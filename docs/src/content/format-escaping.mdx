@@ -103,13 +103,13 @@ const decoded = decode(encoded);
 Escaping works seamlessly with custom types:
 
 ```typescript
-import { createCoderType, Coder } from "codables";
+import { createCodableType, Coder } from "codables";
 
 class ConfigClass {
   constructor(public $$Set: string, public $$Map: string) {}
 }
 
-const $$config = createCoderType(
+const $$config = createCodableType(
   "Config",
   (value) => value instanceof ConfigClass,
   (instance) => ({ $$Set: instance.$$Set, $$Map: instance.$$Map }),

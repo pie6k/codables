@@ -1,7 +1,7 @@
 import * as builtinTypesMap from "./builtin";
 
 import { AnyCodableClass, JSONValue } from "./types";
-import { CoderType, createCoderType, getIsCoderType } from "./CoderType";
+import { CodableType, CodableTypeOptions, createCodableType, getIsCodableType } from "./CodableType";
 import { DecodeContext, DecodeOptions } from "./DecodeContext";
 import { EncodeContext, EncodeOptions } from "./EncodeContext";
 import { assert, assertGet } from "./utils/assert";
@@ -12,19 +12,20 @@ import { AnyClass } from "./decorators/types";
 import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
 import { encodeInput } from "./encode";
+import { resolveCodableDependencies } from "./dependencies";
 
-const DEFAULT_TYPES = [...Object.values(builtinTypesMap), $$externalReference].filter(getIsCoderType);
+const DEFAULT_TYPES = [...Object.values(builtinTypesMap), $$externalReference].filter(getIsCodableType);
 
-function getSortedTypes(types: CoderType[]) {
+function getSortedTypes(types: CodableType[]) {
   return types.sort((a, b) => {
     return b.priority - a.priority;
   });
 }
 
-function createTypesMap(types: CoderType[]) {
+function createTypesMap(types: CodableType[]) {
   const sortedTypes = getSortedTypes(types);
 
-  const map = new Map<string, CoderType>();
+  const map = new Map<string, CodableType>();
 
   for (const type of sortedTypes) {
     if (map.has(type.name)) {
@@ -37,10 +38,10 @@ function createTypesMap(types: CoderType[]) {
   return map;
 }
 
-type CoderTypeOrClass = CoderType | AnyClass;
+type CodableTypeOrClass = CodableType | AnyClass;
 
-function resolveCoderTypeOrClass(typeOrClass: CoderTypeOrClass): CoderType {
-  if (typeOrClass instanceof CoderType) {
+function resolveCodableTypeOrClass(typeOrClass: CodableTypeOrClass): CodableType {
+  if (typeOrClass instanceof CodableType) {
     return typeOrClass;
   }
 
@@ -53,7 +54,7 @@ function resolveCoderTypeOrClass(typeOrClass: CoderTypeOrClass): CoderType {
   return codableClassType;
 }
 
-function updateTypesOrderByPriority(currentTypes: Map<string, CoderType>) {
+function updateTypesOrderByPriority(currentTypes: Map<string, CodableType>) {
   const sortedTypes = getSortedTypes([...currentTypes.values()]);
 
   const needsReordering = sortedTypes.some((type) => type.priority !== 0);
@@ -68,52 +69,69 @@ function updateTypesOrderByPriority(currentTypes: Map<string, CoderType>) {
 }
 
 export class Coder {
-  private readonly typesMap = new Map<string, CoderType>();
-  private readonly registeredClasses = new WeakSet<AnyCodableClass<any>>();
+  private readonly typesMap = new Map<string, CodableType>();
 
-  constructor(extraTypes: CoderTypeOrClass[] = []) {
-    const resolvedExtraTypes = extraTypes.map(resolveCoderTypeOrClass);
-    this.typesMap = createTypesMap([...DEFAULT_TYPES, ...resolvedExtraTypes]);
+  constructor(extraTypes: CodableTypeOrClass[] = []) {
+    this.typesMap = createTypesMap([...DEFAULT_TYPES]);
+
+    this.register(...extraTypes);
   }
 
   private reorderTypes() {
     updateTypesOrderByPriority(this.typesMap);
   }
 
-  getTypeByName(name: string): CoderType | null {
+  getTypeByName(name: string): CodableType | null {
     return this.typesMap.get(name) ?? null;
   }
 
-  registerType(...types: Array<CoderType>) {
+  private getHasType(type: CodableType): boolean {
+    const existingType = this.getTypeByName(type.name);
+
+    return type === existingType;
+  }
+
+  private registerSingleType(type: CodableType) {
     if (this.isDefault) {
       throw new Error(
         "Cannot register types on the default coder. Create a custom coder instance using `new Coder()` and register types on that instance.",
       );
     }
 
-    for (const type of types) {
-      if (this.typesMap.has(type.name)) {
-        throw new Error(`Coder type "${type.name}" already registered`);
-      }
+    if (this.getHasType(type)) return;
 
-      this.typesMap.set(type.name, type);
+    if (this.typesMap.has(type.name)) {
+      throw new Error(`Other codable type with name "${type.name}" already registered`);
+    }
+
+    this.typesMap.set(type.name, type);
+
+    const dependencies = resolveCodableDependencies(type);
+
+    for (const dependency of dependencies) {
+      this.registerSingleType(dependency);
     }
 
     this.reorderTypes();
   }
 
-  register(...typesOrClasses: CoderTypeOrClass[]) {
+  registerType(...types: Array<CodableType>) {
+    for (const type of types) {
+      this.registerSingleType(type);
+    }
+  }
+
+  private registerSingle(typeOrClass: CodableTypeOrClass) {
+    const typeToAdd = getIsCodableClass(typeOrClass)
+      ? assertGet(getCodableClassType(typeOrClass), `Codable class "${typeOrClass.name}" not registered`)
+      : typeOrClass;
+
+    return this.registerSingleType(typeToAdd);
+  }
+
+  register(...typesOrClasses: CodableTypeOrClass[]) {
     for (const typeOrClass of typesOrClasses) {
-      if (getIsCodableClass(typeOrClass)) {
-        if (this.registeredClasses.has(typeOrClass)) continue;
-        const type = assertGet(getCodableClassType(typeOrClass), `Codable class "${typeOrClass.name}" not registered`);
-
-        this.registerType(type);
-        this.registeredClasses.add(typeOrClass);
-        continue;
-      }
-
-      return this.registerType(typeOrClass);
+      this.registerSingle(typeOrClass);
     }
   }
 
@@ -125,9 +143,9 @@ export class Coder {
     canEncode: (value: unknown) => value is Item,
     encode: (data: Item) => Data,
     decode: (data: Data) => Item,
-    priority?: number,
+    options?: CodableTypeOptions,
   ) {
-    return this.registerType(createCoderType(name, canEncode, encode, decode, priority));
+    return this.registerType(createCodableType(name, canEncode, encode, decode, options));
   }
 
   encode<T>(value: T, options?: EncodeOptions): JSONValue {
@@ -156,7 +174,7 @@ export class Coder {
     return this.decode<T>(this.encode(value));
   }
 
-  getMatchingTypeFor(input: unknown): CoderType | null {
+  getMatchingTypeFor(input: unknown): CodableType | null {
     for (const type of this.typesMap.values()) {
       if (type.canHandle(input)) {
         return type;
@@ -171,7 +189,7 @@ export class Coder {
   }
 }
 
-export function createCoder(extraTypes: CoderType[] = []) {
+export function createCoder(extraTypes: CodableType[] = []) {
   return new Coder(extraTypes);
 }
 

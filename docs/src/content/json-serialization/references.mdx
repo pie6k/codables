@@ -105,7 +105,7 @@ class Node {
   constructor(public value: string, public parent?: Node) {}
 }
 
-const $$node = createCoderType(
+const $$node = createCodableType(
   "Node",
   (value) => value instanceof Node,
   (node) => ({ value: node.value, parent: node.parent }),

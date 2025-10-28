@@ -2,18 +2,18 @@ import { Callout } from 'nextra/components'
 
 # Custom Types
 
-Codables allows you to define custom serialization for your own types using `createCoderType` and custom `Coder` instances.
+Codables allows you to define custom serialization for your own types using `createCodableType` and custom `Coder` instances.
 
 ## Creating Custom Types
 
 ```typescript
-import { createCoderType, Coder } from "codables";
+import { createCodableType, Coder } from "codables";
 
 class Point {
   constructor(public x: number, public y: number) {}
 }
 
-const $$point = createCoderType(
+const $$point = createCodableType(
   "Point",
   (value) => value instanceof Point,
   (point) => [point.x, point.y],
@@ -41,7 +41,7 @@ class User {
   constructor(public name: string, public loginDates: Set<Date>) {}
 }
 
-const $$user = createCoderType(
+const $$user = createCodableType(
   "User",
   (value) => value instanceof User,
   (user) => ({ name: user.name, loginDates: user.loginDates }),
@@ -68,14 +68,14 @@ class Person {
   constructor(public name: string, public address: Address) {}
 }
 
-const $$address = createCoderType(
+const $$address = createCodableType(
   "Address",
   (value) => value instanceof Address,
   (addr) => [addr.street, addr.city],
   ([street, city]) => new Address(street, city)
 );
 
-const $$person = createCoderType(
+const $$person = createCodableType(
   "Person", 
   (value) => value instanceof Person,
   (person) => ({ name: person.name, address: person.address }),
@@ -94,7 +94,7 @@ const encoded = coder.encode(person);
 When multiple types could match the same value, use the `priority` parameter to control matching order:
 
 ```typescript
-const $$highPriority = createCoderType(
+const $$highPriority = createCodableType(
   "HighPriority",
   (value) => typeof value === "string" && value.startsWith("special:"),
   (value) => value,
@@ -102,7 +102,7 @@ const $$highPriority = createCoderType(
   10 // Higher priority
 );
 
-const $$lowPriority = createCoderType(
+const $$lowPriority = createCodableType(
   "LowPriority", 
   (value) => typeof value === "string",
   (value) => value,

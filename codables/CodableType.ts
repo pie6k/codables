@@ -1,14 +1,20 @@
 import { Tag, TagKey } from "./format";
 
+import { CodableDependencies } from "./dependencies";
 import { DecodeContext } from "./DecodeContext";
 import { EncodeContext } from "./EncodeContext";
 
-interface CoderTypeDefinition<Item, Data> {
+export interface CodableTypeOptions {
+  priority?: number;
+  dependencies?: CodableDependencies;
+}
+
+interface CodableTypeDefinition<Item, Data> {
   name: string;
   canHandle: (value: unknown) => value is Item;
   encode: (data: Item, context: EncodeContext) => Data;
   decode: (data: Data, context: DecodeContext) => Item;
-  priority?: number;
+  options?: CodableTypeOptions;
 }
 
 export function createTag<Name extends string, Data>(name: Name, data: Data) {
@@ -19,15 +25,25 @@ export function createTag<Name extends string, Data>(name: Name, data: Data) {
   return tag;
 }
 
-export class CoderType<Item = any, Data = any> {
-  constructor(readonly definition: CoderTypeDefinition<Item, Data>) {
+/**
+ * Custom class types have priority = amount of classes they extend. This is to ensure that child classes are checked first.
+ * However, we still want built-in types, like `Map`, to be checked before those as they are certainly more common.
+ *
+ * If it is 0, custom class types would always be checked before built-in types, degrading performance.
+ */
+const DEFAULT_PRIORITY = 10;
+
+export class CodableType<Item = any, Data = any> {
+  constructor(readonly definition: CodableTypeDefinition<Item, Data>) {
     this.name = definition.name;
     this.tagKey = `$$${this.name}`;
-    this.priority = definition.priority ?? 0;
+    this.priority = definition.options?.priority ?? DEFAULT_PRIORITY;
+    this.dependencies = definition.options?.dependencies ?? null;
   }
 
   readonly name: string;
   readonly priority: number;
+  readonly dependencies: CodableDependencies | null;
 
   readonly tagKey: TagKey<typeof this.name>;
 
@@ -52,22 +68,22 @@ export class CoderType<Item = any, Data = any> {
   }
 }
 
-export function createCoderType<Item, Data>(
+export function createCodableType<Item, Data>(
   name: string,
   canHandle: (value: unknown) => value is Item,
   encode: (data: Item, context: EncodeContext) => Data,
   decode: (data: Data, context: DecodeContext) => Item,
-  priority?: number,
-): CoderType<Item, Data> {
-  return new CoderType({
+  options?: CodableTypeOptions,
+): CodableType<Item, Data> {
+  return new CodableType({
     name,
     canHandle,
     encode,
     decode,
-    priority,
+    options,
   });
 }
 
-export function getIsCoderType(value: unknown): value is CoderType {
-  return value instanceof CoderType;
+export function getIsCodableType(value: unknown): value is CodableType {
+  return value instanceof CodableType;
 }

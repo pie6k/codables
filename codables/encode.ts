@@ -4,7 +4,7 @@ import { JSONPrimitive, JSONValue } from "./types";
 import { Coder } from "./Coder";
 import { EncodeContext } from "./EncodeContext";
 import { addPathSegment } from "./utils/JSONPointer";
-import { createTag } from "./CoderType";
+import { createTag } from "./CodableType";
 import { getCodableTypeOf } from "./utils/typeof";
 import { getIsForbiddenProperty } from "./utils/security";
 import { narrowType } from "./utils/assert";

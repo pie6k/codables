@@ -32,3 +32,7 @@ export function getIsRecord(value: unknown): value is Record<string, unknown> {
 export function getIsObject(value: unknown): value is object {
   return typeof value === "object" && value !== null;
 }
+
+export function getIsNotNull<T>(value: T | null): value is T {
+  return value !== null;
+}

@@ -19,7 +19,7 @@ Codables compares favorably to other serialization libraries, particularly Super
 | **Performance** | 3-4x faster encoding, 1.5-2x faster decoding | Baseline |
 | **Format** | Tagged format (`{ $$Date: "..." }`) | SuperJSON format (`{ __superjson__: ... }`) |
 | **Class Support** | Built-in decorator framework | Manual serialization required |
-| **Custom Types** | `createCoderType` API | Manual transformer functions |
+| **Custom Types** | `createCodableType` API | Manual transformer functions |
 | **Reference Preservation** | Automatic with `preserveReferences` option | Always enabled |
 | **Format Safety** | Automatic collision detection and escaping | Manual handling required |
 | **Bundle Size** | Smaller core, modular imports | Monolithic |
@@ -147,7 +147,7 @@ const deserialized = parse(serialized);
 SuperJSON.registerClass(MyClass, transformer);
 
 // After (Codables)
-const $$myClass = createCoderType(
+const $$myClass = createCodableType(
   "MyClass",
   (value) => value instanceof MyClass,
   (instance) => instance.data,

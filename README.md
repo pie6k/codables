@@ -107,34 +107,37 @@ const decoded = coder.decode<GameState>(encoded);
 // All types, references, and circular dependencies preserved!
 ```
 
-# Supported Types
+Note: for classes to be automatically serialized, they need to have memberwise constructor (eg the same way like Swift `Codable` structs work). Read more about it [here](https://codableslib.com/docs/declarative-serialization/memberwise-constructor).
+
+# Built-in Types
 
 Codables automatically handles JavaScript types that standard JSON cannot serialize:
 
-| JavaScript Type | Example Output                                         |
-| --------------- | ------------------------------------------------------ |
-| `Date`          | `{ $$Date: "2025-01-01T00:00:00.000Z" }`               |
-| `BigInt`        | `{ $$BigInt: "1234567890123456789" }`                  |
-| `Set`           | `{ $$Set: ["a", "b", "c"] }`                           |
-| `Map`           | `{ $$Map: [["key", "value"]] }`                        |
-| `RegExp`        | `{ $$RegExp: ["hello", "gi"] }`                        |
-| `Symbol`        | `{ $$Symbol: "test" }`                                 |
-| `URL`           | `{ $$URL: "https://example.com/" }`                    |
-| `Error`         | `{ $$Error: "Something went wrong" }`                  |
-| `undefined`     | `{ $$undefined: null }`                                |
-| Typed Arrays    | `{ $$typedArray: { type: "uint8", data: [1, 2, 3] } }` |
-| Special Numbers | `{ $$num: "NaN" }`, `{ $$num: "Infinity" }`            |
+| JavaScript Type   | Example Output                                         |
+| ----------------- | ------------------------------------------------------ |
+| `Date`            | `{ $$Date: "2025-01-01T00:00:00.000Z" }`               |
+| `BigInt`          | `{ $$BigInt: "1234567890123456789" }`                  |
+| `Set`             | `{ $$Set: ["a", "b", "c"] }`                           |
+| `Map`             | `{ $$Map: [["key", "value"]] }`                        |
+| `RegExp`          | `{ $$RegExp: ["hello", "gi"] }`                        |
+| `Symbol`          | `{ $$Symbol: "test" }`                                 |
+| `URL`             | `{ $$URL: "https://example.com/" }`                    |
+| `URLSearchParams` | `{ $$URLSearchParams: "foo=bar&baz=qux" }`             |
+| `Error`           | `{ $$Error: "Something went wrong" }`                  |
+| `undefined`       | `{ $$undefined: null }`                                |
+| Typed Arrays      | `{ $$typedArray: { type: "uint8", data: [1, 2, 3] } }` |
+| Special Numbers   | `{ $$num: "NaN" }`, `{ $$num: "Infinity" }`            |
 
 [Read more about supported types →](https://codableslib.com/docs/json-serialization/supported-types)
 
+Of course, you can extend it with custom types.
+
 # Performance
 
-Codables delivers superior performance compared to alternatives:
+Codables is heavily optimized for performance:
 
-- **Encoding**: ~3-3.5x faster than SuperJSON across all data sizes
-- **Decoding**: Comparable to or faster than SuperJSON (1.1-1.6x faster)
-- **Bundle Size**: Smaller core with modular imports
-- **Memory**: Efficient reference handling with optional reference preservation
+- **Encoding**: ~3-3.5x faster than SuperJSON across all data sizes and types
+- **Decoding**: Comparable to or faster than SuperJSON depending on the data type
 
 [View detailed benchmarks →](https://codableslib.com/docs/performance)
 
@@ -143,7 +146,7 @@ Codables delivers superior performance compared to alternatives:
 ## Core Functions
 
 ```typescript
-import { encode, decode, stringify, parse } from "codables";
+import { encode, decode, stringify, parse, copy } from "codables";
 
 // Basic encoding/decoding
 const encoded = encode(data);
@@ -152,6 +155,14 @@ const decoded = decode(encoded);
 // With JSON stringification
 const jsonString = stringify(data);
 const restored = parse(jsonString);
+
+// Deep copy maintaining all types and references equality
+const foo = { foo: "foo" };
+const original = [foo, foo];
+const copied = copy(original);
+// copied === original; // false
+// copied[0] === original[0]; // false -> nested copy
+// copied[0] === copied[1]; // true -> reference equality is preserved
 ```
 
 ## Declarative Class Serialization
@@ -174,9 +185,9 @@ const decoded = coder.decode<MyClass>(encoded);
 You can also use lower-level API to create custom types and encode/decode them manually.
 
 ```typescript
-import { createCoderType, Coder } from "codables";
+import { createCodableType, Coder } from "codables";
 
-const $$custom = createCoderType(
+const $$custom = createCodableType(
   "CustomType", // name of the type
   (value) => value instanceof CustomType, // how to detect some value should be encoded using this type
   (instance) => instance.data, // how to encode the value (might return rich data like `Map` or `Set`, or even other custom types)
@@ -184,6 +195,9 @@ const $$custom = createCoderType(
 );
 
 const coder = new Coder([$$custom]);
+// or
+const coder = new Coder();
+coder.register($$custom);
 ```
 
 # Security

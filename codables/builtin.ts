@@ -3,7 +3,7 @@ import { decodeSpecialNumber, getSpecialNumberType } from "./utils/numbers";
 import { getSymbolKey, removeUndefinedProperties } from "./utils/misc";
 
 import { EncodeContext } from "./EncodeContext";
-import { createCoderType } from "./CoderType";
+import { createCodableType } from "./CodableType";
 import { getErrorExtraProperties } from "./utils/errors";
 
 /**
@@ -16,7 +16,7 @@ function getIsValidDate(date: Date): boolean {
   return !isNaN(date.getTime());
 }
 
-export const $$date = createCoderType(
+export const $$date = createCodableType(
   "Date",
   (value) => value instanceof Date,
   (date) => {
@@ -31,21 +31,21 @@ export const $$date = createCoderType(
   },
 );
 
-export const $$set = createCoderType(
+export const $$set = createCodableType(
   "Set",
   (value) => value instanceof Set,
   (set) => [...set],
   (array) => new Set(array),
 );
 
-export const $$map = createCoderType(
+export const $$map = createCodableType(
   "Map",
   (value) => value instanceof Map,
   (map) => [...map.entries()],
   (entries) => new Map(entries),
 );
 
-export const $$error = createCoderType(
+export const $$error = createCodableType(
   "Error",
   (value) => value instanceof Error,
   (error: Error, context: EncodeContext) => {
@@ -92,21 +92,21 @@ export const $$error = createCoderType(
   },
 );
 
-export const $$undefined = createCoderType(
+export const $$undefined = createCodableType(
   "undefined",
   (value) => value === undefined,
   () => null,
   () => undefined,
 );
 
-export const $$bigInt = createCoderType(
+export const $$bigInt = createCodableType(
   "BigInt",
   (value) => typeof value === "bigint",
   (bigInt) => bigInt.toString(),
   (string) => BigInt(string),
 );
 
-export const $$regexp = createCoderType(
+export const $$regexp = createCodableType(
   "RegExp",
   (value) => value instanceof RegExp,
   ({ source, flags }) => {
@@ -125,7 +125,7 @@ export const $$regexp = createCoderType(
   },
 );
 
-export const $$url = createCoderType(
+export const $$url = createCodableType(
   "URL",
   (value) => value instanceof URL,
   (url) => url.toString(),
@@ -134,7 +134,7 @@ export const $$url = createCoderType(
 
 const symbolsRegistry = new Map<string, symbol>();
 
-export const $$symbol = createCoderType(
+export const $$symbol = createCodableType(
   "Symbol",
   (value) => typeof value === "symbol",
   (symbol) => {
@@ -147,7 +147,7 @@ export const $$symbol = createCoderType(
   (symbolKey) => symbolsRegistry.get(symbolKey) ?? Symbol.for(symbolKey),
 );
 
-export const $$typedArray = createCoderType(
+export const $$typedArray = createCodableType(
   "typedArray",
   getIsTypedArray,
   (value) => {
@@ -165,14 +165,14 @@ export const $$typedArray = createCoderType(
  * Handles special numbers like NaN, Infinity, -Infinity, -0 that are not correctly serialized by
  * regular JSON
  */
-export const $$num = createCoderType(
+export const $$num = createCodableType(
   "num",
   (value): value is number => typeof value === "number" && !!getSpecialNumberType(value),
   getSpecialNumberType,
   decodeSpecialNumber,
 );
 
-export const $$urlSearchParams = createCoderType(
+export const $$urlSearchParams = createCodableType(
   "URLSearchParams",
   (value) => value instanceof URLSearchParams,
   (urlSearchParams) => urlSearchParams.toString(),

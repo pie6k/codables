@@ -1,9 +1,9 @@
 import { AnyClass, ClassDecorator, MakeRequired, MemberwiseClass } from "./types";
 import { ClassDecoder, ClassEncoder, createClassDecoder, createDefaultClassEncoder } from "./encode";
 import { CodableClassFieldsMap, FieldMetadata, codableClassFieldsRegistry, registerCodableClass } from "./registry";
-import { CoderType, createCoderType } from "../CoderType";
+import { CodableType, createCodableType } from "../CodableType";
 
-import { CodableClassDependencies } from "./dependencies";
+import { CodableDependencies } from "../dependencies";
 import { getPrototypeChainLength } from "./prototype";
 import { narrowType } from "../utils/assert";
 
@@ -32,7 +32,7 @@ function resolveKeys<T extends AnyClass>(keys: CodableClassKeysInput<T>): Codabl
 }
 
 interface CodableClassOptions<T extends AnyClass> {
-  dependencies?: CodableClassDependencies;
+  dependencies?: CodableDependencies;
   encode?: ClassEncoder<T>;
   keys?: CodableClassKeysInput<T>;
 }
@@ -63,7 +63,7 @@ export function codableClass<T extends AnyClass>(
     const encoder: ClassEncoder<T> = maybeOptions?.encode ?? createDefaultClassEncoder(Class, keysFromOptions);
     const decoder: ClassDecoder<T> = createClassDecoder(Class, isUsingDefaultEncoder, keysFromOptions);
 
-    const type = createCoderType(
+    const type = createCodableType(
       name,
       (value): value is InstanceType<T> => value instanceof Class,
       encoder,
@@ -72,13 +72,15 @@ export function codableClass<T extends AnyClass>(
        * If we have Foo and Bar extending Foo, Bar should always be the first to try to match.
        * As Foo is the parent class, it will also match Bar, resulting in incorrect data being decoded.
        */
-      getPrototypeChainLength(Class),
+      {
+        priority: getPrototypeChainLength(Class),
+        dependencies: maybeOptions?.dependencies,
+      },
     );
 
     registerCodableClass(context.metadata, {
       name,
-      coderType: type as CoderType<any, any>,
-      dependencies: maybeOptions?.dependencies,
+      codableType: type as CodableType<any, any>,
     });
 
     const fieldsMap = codableClassFieldsRegistry.getOrInit(context.metadata, () => new Map());

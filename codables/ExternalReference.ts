@@ -1,4 +1,4 @@
-import { createCoderType } from "./CoderType";
+import { createCodableType } from "./CodableType";
 
 export class ExternalReference<T> {
   constructor(
@@ -11,7 +11,7 @@ export function externalReference<T>(key: string, isOptional = false): T {
   return new ExternalReference<T>(key, isOptional) as unknown as T;
 }
 
-export const $$externalReference = createCoderType(
+export const $$externalReference = createCodableType(
   "external",
   (value) => value instanceof ExternalReference,
   (ref) => {
