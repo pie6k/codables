@@ -6,7 +6,6 @@
   "workspaces": {
     "packages": [
       "codables",
-      "playground",
       "docs"
     ]
   },
