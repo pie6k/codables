@@ -56,6 +56,7 @@ export function resolveCodableDependencies(dependency: CodableDependency): Set<C
       if (!nestedDependencies) continue;
 
       addToSet(resolvedDependencies, nestedDependencies);
+      addToSet(dependenciesToCheck, nestedDependencies);
     }
   }
 

@@ -21,11 +21,7 @@ export const codableClassRegistry = new PrivateMetadata<CodableClassMetadata>();
 export const codableClassFieldsRegistry = new PrivateMetadata<CodableClassFieldsMap>();
 export const externalClassFieldsRegistry = new PrivateMetadata<Map<string, { key: string; isOptional: boolean }>>();
 
-export function registerCodableClass<T extends AnyClass>(key: DecoratorMetadata, metadata: CodableClassMetadata<T>) {
-  return codableClassRegistry.init(key, metadata);
-}
-
-export function getIsCodableClass<T extends AnyClass>(Class: object): Class is AnyClass {
+export function getIsCodableClass(Class: object): Class is AnyClass {
   const key = getMetadataKey(Class);
 
   if (!key) return false;

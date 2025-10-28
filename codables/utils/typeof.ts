@@ -50,6 +50,14 @@ export type CodablePrimitive = boolean | string | undefined | number;
 
 const ANY_TAG_KEY_REGEXP = /^~*\$\$.+/;
 
+function getOnlyKey(input: Record<string, any>) {
+  const keys = Object.keys(input);
+
+  if (keys.length !== 1) return null;
+
+  return keys[0];
+}
+
 export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
   switch (typeof input) {
     case "boolean":
@@ -67,12 +75,9 @@ export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
 
   if (Array.isArray(input)) return "array";
 
-  const keys = Object.keys(input);
+  const key = getOnlyKey(input);
 
-  // Tag format is { $$set: [1, 2, 3] }, it cannot have other keys
-  if (keys.length !== 1) return "record";
-
-  const key = keys[0];
+  if (key === null) return "record";
 
   // It is not a tag, our tag always have something after $$. This will match something like { $$: "foo" }
 
@@ -90,7 +95,7 @@ export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
     return key as TagKey;
   }
 
-  if (ANY_TAG_KEY_REGEXP.test(key)) return "escaped-tag";
+  if (key.startsWith("~") && ANY_TAG_KEY_REGEXP.test(key)) return "escaped-tag";
 
   return "record";
 }

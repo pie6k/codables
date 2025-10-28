@@ -1,13 +1,11 @@
 import { AnyClass, ClassDecorator, MakeRequired, MemberwiseClass } from "./types";
 import { ClassDecoder, ClassEncoder, createClassDecoder, createDefaultClassEncoder } from "./encode";
-import { CodableClassFieldsMap, FieldMetadata, codableClassFieldsRegistry, registerCodableClass } from "./registry";
+import { CodableClassFieldsMap, FieldMetadata, codableClassFieldsRegistry, codableClassRegistry } from "./registry";
 import { CodableType, createCodableType } from "../CodableType";
 
 import { CodableDependencies } from "../dependencies";
 import { getPrototypeChainLength } from "./prototype";
 import { narrowType } from "../utils/assert";
-
-type StringOnly<T> = T extends string ? T : never;
 
 export type CodableClassKeys<T extends AnyClass> = Array<keyof InstanceType<T>> | CodableClassFieldsMap<T>;
 
@@ -44,12 +42,6 @@ type CodableClassDecoratorArgs<T extends AnyClass> =
     : // Non-memberwise is constructer in a custom way so we require an explicit encode function
       [string, MakeRequired<CodableClassOptions<T>, "encode">];
 
-type A = CodableClassDecoratorArgs<AnyClass>;
-
-function getIsString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
 export function codableClass<T extends AnyClass>(
   ...[name, maybeOptions]: CodableClassDecoratorArgs<T>
 ): ClassDecorator<T> {
@@ -78,7 +70,7 @@ export function codableClass<T extends AnyClass>(
       },
     );
 
-    registerCodableClass(context.metadata, {
+    codableClassRegistry.init(context.metadata, {
       name,
       codableType: type as CodableType<any, any>,
     });

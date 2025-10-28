@@ -55,13 +55,10 @@ export class DecodeContext {
   resolvedRefs = new Map<string, object>();
 
   readonly hasRefAliases: boolean;
-
   /**
    * No custom types, no ref aliases, no escaped tags. Encoded data is regular JSON-compatible.
    */
-  get isPlainJSON(): boolean {
-    return !this.hasEscapedTags && !this.hasCustomTypes && !this.hasRefAliases;
-  }
+  readonly isPlainJSON: boolean;
 
   /**
    * Some object needed by some alias (list prepared before) is ready to be used.
@@ -90,5 +87,6 @@ export class DecodeContext {
     this.externalReferencesMap = new Map(Object.entries(options?.externalReferences ?? {}));
 
     this.hasRefAliases = this.presentRefAliases.size > 0;
+    this.isPlainJSON = !this.hasEscapedTags && !this.hasCustomTypes && !this.hasRefAliases;
   }
 }

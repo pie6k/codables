@@ -220,20 +220,22 @@ You can run these benchmarks yourself by downloading the repository and running 
 
 | Operation  | Preserve refs                      | Copy refs                          |
 | ---------- | ---------------------------------- | ---------------------------------- |
-| **Encode** | 🟢 **2.87x faster** than SuperJSON | 🟢 **3.64x faster** than SuperJSON |
-| **Decode** | 🟢 **1.11x faster** than SuperJSON | 🟢 **1.10x faster** than SuperJSON |
+| **Encode** | 🟢 **3.68x faster** than SuperJSON | 🟢 **6.85x faster** than SuperJSON |
+| **Decode** | 🟢 **1.29x faster** than SuperJSON | 🟢 **1.28x faster** than SuperJSON |
 
 ### Complex Data Structures
 
 It includes deeply nested objects, with repeating references, `Sets`, `Maps`, and `Dates`
 
-| Dataset     | Encode              |                     | Decode                        |                     |
-| ----------- | ------------------- | ------------------- | ----------------------------- | ------------------- |
-|             | **Preserve refs**   | **Copy refs**       | **Preserve refs**             | **Copy refs**       |
-| **Small**   | 🟢 **3.39x faster** | 🟢 **3.91x faster** | 🟢 **1.27x faster**           | 🟢 **1.24x faster** |
-| **Average** | 🟢 **3.51x faster** | 🟢 **3.99x faster** | 🔵 SuperJSON **1.02x faster** | 🟢 **1.36x faster** |
-| **Large**   | 🟢 **3.55x faster** | 🟢 **4.16x faster** | 🔵 SuperJSON **1.01x faster** | 🟢 **1.60x faster** |
-| **Huge**    | 🟢 **3.67x faster** | 🟢 **4.16x faster** | 🟢 **1.24x faster**           | 🟢 **1.67x faster** |
+| Dataset     | Encode              |                     | Decode              |                     |
+| ----------- | ------------------- | ------------------- | ------------------- | ------------------- |
+|             | **Preserve refs**   | **Copy refs**       | **Preserve refs**   | **Copy refs**       |
+| **Small**   | 🟢 **3.89x faster** | 🟢 **6.98x faster** | 🟢 **1.68x faster** | 🟢 **1.66x faster** |
+| **Average** | 🟢 **4.20x faster** | 🟢 **5.06x faster** | 🟢 **1.16x faster** | 🟢 **1.05x faster** |
+| **Large**   | 🟢 **4.01x faster** | 🟢 **7.54x faster** | 🟢 **1.19x faster** | 🟢 **1.83x faster** |
+| **Huge**    | 🟢 **4.08x faster** | 🟢 **6.43x faster** | 🟢 **1.31x faster** | 🟢 **2.37x faster** |
+
+Benchmark was run on a MacBook Pro M3 Max with 128GB of RAM.
 
 ## Migration from SuperJSON
 

@@ -11,24 +11,42 @@ function benchmarkComplexData(name: string, data: any, preserveReferences: boole
   const coderEncoded = defaultCoder.encode(data);
   const superjsonEncoded = serialize(data);
 
-  describe(`encode - ${name}`, () => {
-    bench("codables", () => {
-      const encoded = defaultCoder.encode(data, { preserveReferences });
-    });
+  const options = { time: 100, iterations: 4 };
 
-    bench("superjson", () => {
-      const encoded = serialize(data);
-    });
+  describe(`encode - ${name}`, () => {
+    bench(
+      "codables",
+      () => {
+        defaultCoder.encode(data, { preserveReferences });
+      },
+      options,
+    );
+
+    bench(
+      "superjson",
+      () => {
+        serialize(data);
+      },
+      options,
+    );
   });
 
   describe(`decode - ${name}`, () => {
-    bench("codables", () => {
-      const decoded = defaultCoder.decode(coderEncoded);
-    });
+    bench(
+      "codables",
+      () => {
+        defaultCoder.decode(coderEncoded);
+      },
+      options,
+    );
 
-    bench("superjson", () => {
-      const decoded = deserialize(superjsonEncoded);
-    });
+    bench(
+      "superjson",
+      () => {
+        deserialize(superjsonEncoded);
+      },
+      options,
+    );
   });
 }
 

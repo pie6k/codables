@@ -5,16 +5,6 @@ import { getIsForbiddenProperty } from "../utils/security";
 import { getRegisteredCodableFields } from "./codable";
 import { iteratePrototypeChain } from "./prototype";
 
-function* iterateOwnPropertyDescriptors(thing: object): Generator<[string, PropertyDescriptor]> {
-  if (!thing) return;
-
-  const descriptors = Object.getOwnPropertyDescriptors(thing);
-
-  for (const [key, descriptor] of Object.entries(descriptors)) {
-    yield [key, descriptor];
-  }
-}
-
 function collectRegisteredCodableFields(Class: AnyClass, keysMap: CodableClassFieldsMap) {
   for (const ClassInPrototype of iteratePrototypeChain(Class)) {
     const registeredKeysMap = getRegisteredCodableFields(ClassInPrototype as AnyClass);

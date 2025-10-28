@@ -6,6 +6,7 @@ export function getSpecialNumberType(value: number) {
       return "-Infinity";
     case 0:
       if (1 / value === -Infinity) return "-0";
+      return null;
   }
 
   if (isNaN(value)) return "NaN";

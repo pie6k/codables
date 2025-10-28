@@ -12,34 +12,20 @@ You can run these benchmarks yourself by downloading the repository and running 
 
 | Operation  | Preserve refs                      | Copy refs                          |
 | ---------- | ---------------------------------- | ---------------------------------- |
-| **Encode** | 🟢 **2.87x faster** than SuperJSON | 🟢 **3.64x faster** than SuperJSON |
-| **Decode** | 🟢 **1.11x faster** than SuperJSON | 🟢 **1.10x faster** than SuperJSON |
+| **Encode** | 🟢 **3.68x faster** than SuperJSON | 🟢 **6.85x faster** than SuperJSON |
+| **Decode** | 🟢 **1.29x faster** than SuperJSON | 🟢 **1.28x faster** than SuperJSON |
 
 ### Complex Data Structures
 
 It includes deeply nested objects, with repeating references, `Sets`, `Maps`, and `Dates`
 
-| Dataset     | Encode              |                     | Decode                        |                     |
-| ----------- | ------------------- | ------------------- | ----------------------------- | ------------------- |
-|             | **Preserve refs**   | **Copy refs**       | **Preserve refs**             | **Copy refs**       |
-| **Small**   | 🟢 **3.39x faster** | 🟢 **3.91x faster** | 🟢 **1.27x faster**           | 🟢 **1.24x faster** |
-| **Average** | 🟢 **3.51x faster** | 🟢 **3.99x faster** | 🔵 SuperJSON **1.02x faster** | 🟢 **1.36x faster** |
-| **Large**   | 🟢 **3.55x faster** | 🟢 **4.16x faster** | 🔵 SuperJSON **1.01x faster** | 🟢 **1.60x faster** |
-| **Huge**    | 🟢 **3.67x faster** | 🟢 **4.16x faster** | 🟢 **1.24x faster**           | 🟢 **1.67x faster** |
-
-### Summary
-
-**Encoding** - Codables is around ~3-3.5x faster than SuperJSON when encoding data, regardless of the size and complexity of the data.
-
-**Decoding** - Comparable, but usually slightly faster than SuperJSON.
-
-### Dataset Details
-
-**Preserve refs** means encoder analyzes the data to find out if the same object is seen multiple times and then, when decoding, will also re-use object references.
-
-**Copy refs** means encoder will not preserve object references and decoded data will contain copies of the same object even if they were the same reference in the input.
-
-## Raw benchmark results
+| Dataset     | Encode              |                     | Decode              |                     |
+| ----------- | ------------------- | ------------------- | ------------------- | ------------------- |
+|             | **Preserve refs**   | **Copy refs**       | **Preserve refs**   | **Copy refs**       |
+| **Small**   | 🟢 **3.89x faster** | 🟢 **6.98x faster** | 🟢 **1.68x faster** | 🟢 **1.66x faster** |
+| **Average** | 🟢 **4.20x faster** | 🟢 **5.06x faster** | 🟢 **1.16x faster** | 🟢 **1.05x faster** |
+| **Large**   | 🟢 **4.01x faster** | 🟢 **7.54x faster** | 🟢 **1.19x faster** | 🟢 **1.83x faster** |
+| **Huge**    | 🟢 **4.08x faster** | 🟢 **6.43x faster** | 🟢 **1.31x faster** | 🟢 **2.37x faster** |
 
 Benchmark was run on a MacBook Pro M3 Max with 128GB of RAM.
 
@@ -47,167 +33,179 @@ Benchmark was run on a MacBook Pro M3 Max with 128GB of RAM.
 <summary>See raw benchmark results</summary>
 
 ```bash
- ✓ tests/benchmark.bench.ts > benchmark > plain json > encode - 6mb 1364ms
+ ✓ tests/benchmark.bench.ts > benchmark > plain json > encode - 6mb 536ms
      name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables    104.46   8.1118  11.1008   9.5728  10.1071  11.1008  11.1008  11.1008  ±2.45%       53
-   · superjson  36.3738  25.5183  35.7606  27.4923  27.3233  35.7606  35.7606  35.7606  ±4.60%       19
+   · codables    141.32   5.8634   8.0289   7.0763   7.7076   8.0289   8.0289   8.0289  ±5.96%       15
+   · superjson  38.4136  25.6165  26.3393  26.0325  26.0943  26.3393  26.3393  26.3393  ±1.84%        4
 
- ✓ tests/benchmark.bench.ts > benchmark > plain json > decode - 6mb 1261ms
-     name           hz     min      max    mean     p75      p99     p995     p999     rme  samples
-   · codables   205.47  4.0938  14.3499  4.8668  5.0727  12.3883  14.3499  14.3499  ±5.09%      105
-   · superjson  184.36  5.0295   6.6737  5.4240  5.4984   6.6737   6.6737   6.6737  ±0.86%       93
-
- ✓ tests/benchmark.bench.ts > benchmark > plain json > encode - 6mb (no preserve refs) 1341ms
-     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables    134.83   6.6910   8.2862   7.4167   7.7565   8.2862   8.2862   8.2862  ±1.57%       68
-   · superjson  37.0140  25.2882  43.0852  27.0168  26.4562  43.0852  43.0852  43.0852  ±7.00%       19
-
- ✓ tests/benchmark.bench.ts > benchmark > plain json > decode - 6mb (no preserve refs) 1238ms
-     name           hz     min      max    mean     p75     p99     p995     p999     rme  samples
-   · codables   205.25  4.0985  17.9300  4.8721  5.0409  6.8951  17.9300  17.9300  ±5.61%      103
-   · superjson  186.28  5.0373   5.6550  5.3681  5.4475  5.6550   5.6550   5.6550  ±0.51%       94
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - small 1209ms
-     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   17,475.13  0.0501  1.3722  0.0572  0.0526  0.0651  0.7338  1.0427  ±2.42%     8738
-   · superjson   5,161.93  0.1616  1.2410  0.1937  0.1769  0.7949  0.8673  0.9785  ±2.05%     2581
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - small 1210ms
-     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   22,493.40  0.0428  0.3557  0.0445  0.0439  0.0488  0.0570  0.2042  ±0.44%    11247
-   · superjson  17,661.20  0.0506  0.4897  0.0566  0.0550  0.0700  0.2088  0.2993  ±0.66%     8831
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - small (no preserve refs) 1210ms
-     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   19,265.15  0.0440  9.4176  0.0519  0.0459  0.0944  0.1572  1.1848  ±4.54%     9633
-   · superjson   4,930.07  0.1610  9.1148  0.2028  0.1785  0.7477  0.8146  1.1231  ±4.05%     2466
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - small (no preserve refs) 1209ms
-     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   22,242.48  0.0404  0.6191  0.0450  0.0439  0.0564  0.1600  0.2912  ±0.71%    11122
-   · superjson  17,883.84  0.0534  0.4222  0.0559  0.0547  0.0665  0.1968  0.2333  ±0.54%     8942
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - avg 1214ms
-     name             hz     min      max    mean     p75     p99     p995     p999     rme  samples
-   · codables   1,158.24  0.7443  13.9187  0.8634  0.7698  1.7786   1.8289  13.9187  ±5.64%      580
-   · superjson    329.65  2.6315  18.2219  3.0335  3.1919  5.8577  18.2219  18.2219  ±6.26%      165
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - avg 1211ms
-     name             hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   1,094.87  0.8832  1.2697  0.9133  0.9128  1.0870  1.1484  1.2697  ±0.40%      548
-   · superjson  1,115.27  0.8505  1.1715  0.8966  0.8917  1.1447  1.1527  1.1715  ±0.60%      558
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - avg (no preserve refs) 1215ms
-     name             hz     min      max    mean     p75     p99     p995     p999     rme  samples
-   · codables   1,297.63  0.6592  10.4824  0.7706  0.6851  1.8839   2.1405  10.4824  ±4.72%      649
-   · superjson    325.01  2.6520  17.2909  3.0768  3.2292  4.8101  17.2909  17.2909  ±5.82%      163
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - avg (no preserve refs) 1208ms
-     name             hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   1,547.70  0.6290  0.9294  0.6461  0.6398  0.8110  0.8260  0.9294  ±0.39%      775
-   · superjson  1,140.42  0.8304  1.4417  0.8769  0.8628  1.2787  1.3788  1.4417  ±0.76%      571
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - large 1284ms
-     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables    179.86   4.6446  18.7872   5.5598   6.1853  18.7872  18.7872  18.7872  ±6.06%       90
-   · superjson  50.7327  17.9483  36.2007  19.7112  19.4065  36.2007  36.2007  36.2007  ±7.01%       26
-
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - large 1235ms
+ ✓ tests/benchmark.bench.ts > benchmark > plain json > decode - 6mb 442ms
      name           hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   175.01  5.4188  6.3842  5.7139  5.8480  6.3842  6.3842  6.3842  ±0.85%       88
-   · superjson  177.53  5.2538  7.1913  5.6330  5.6977  7.1913  7.1913  7.1913  ±1.01%       89
+   · codables   241.27  3.8788  4.4581  4.1447  4.2970  4.4581  4.4581  4.4581  ±1.77%       25
+   · superjson  187.22  4.8906  5.5359  5.3414  5.4529  5.5359  5.5359  5.5359  ±1.50%       19
 
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - large (no preserve refs) 1278ms
-     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables    213.93   3.9608  16.1923   4.6744   5.1810   8.0416  16.1923  16.1923  ±5.38%      107
-   · superjson  51.4534  17.5992  35.6126  19.4351  19.2109  35.6126  35.6126  35.6126  ±7.05%       26
+ ✓ tests/benchmark.bench.ts > benchmark > plain json > encode - 6mb (no preserve refs) 558ms
+     name            hz      min      max     mean      p75      p99     p995     p999      rme  samples
+   · codables    187.33   4.5381   6.1755   5.3381   5.7754   6.1755   6.1755   6.1755   ±5.23%       19
+   · superjson  27.3290  25.9383  65.7288  36.5912  28.6778  65.7288  65.7288  65.7288  ±84.64%        4
 
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - large (no preserve refs) 1235ms
+ ✓ tests/benchmark.bench.ts > benchmark > plain json > decode - 6mb (no preserve refs) 431ms
      name           hz     min     max    mean     p75     p99    p995    p999     rme  samples
-   · codables   258.41  3.7310  4.3457  3.8698  3.9955  4.2566  4.3457  4.3457  ±0.61%      130
-   · superjson  161.31  5.4505  7.2673  6.1992  6.4975  7.2673  7.2673  7.2673  ±1.34%       81
+   · codables   241.86  3.9113  4.3932  4.1346  4.2824  4.3932  4.3932  4.3932  ±1.68%       25
+   · superjson  189.36  4.8939  5.4525  5.2810  5.3857  5.4525  5.4525  5.4525  ±1.35%       19
 
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - huge 1991ms
-     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables   45.4862  18.3527  43.3044  21.9847  22.7434  43.3044  43.3044  43.3044  ±9.73%       23
-   · superjson  12.3983  69.3681   103.13  80.6562  84.5366   103.13   103.13   103.13  ±9.18%       10
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - small 406ms
+     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   21,234.54  0.0377  1.3792  0.0471  0.0425  0.0540  0.8579  1.0047  ±5.99%     2124
+   · superjson   5,463.87  0.1525  1.0877  0.1830  0.1668  0.7494  0.8460  1.0877  ±4.88%      547
 
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - huge 1357ms
-     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables   51.9792  18.2302  20.9847  19.2385  19.9461  20.9847  20.9847  20.9847  ±1.86%       27
-   · superjson  41.8188  21.0549  26.5966  23.9127  24.8385  26.5966  26.5966  26.5966  ±2.86%       21
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - small 407ms
+     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   29,806.52  0.0304  0.2429  0.0335  0.0329  0.0361  0.0422  0.2369  ±1.30%     2981
+   · superjson  17,753.50  0.0500  0.3205  0.0563  0.0548  0.0672  0.2338  0.3092  ±1.52%     1776
 
- ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - huge (no preserve refs) 1905ms
-     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables   58.9921  15.4004  35.5282  16.9514  16.6192  35.5282  35.5282  35.5282  ±7.91%       30
-   · superjson  14.1934  65.0214  76.9176  70.4551  72.2997  76.9176  76.9176  76.9176  ±3.80%       10
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - small (no preserve refs) 406ms
+     name              hz     min      max    mean     p75     p99    p995     p999      rme  samples
+   · codables   25,394.95  0.0319   1.3072  0.0394  0.0352  0.0409  0.0458   1.2718   ±7.28%     2540
+   · superjson   3,638.95  0.1531  18.5522  0.2748  0.1754  1.0328  1.6148  18.5522  ±36.52%      364
 
- ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - huge (no preserve refs) 1302ms
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - small (no preserve refs) 406ms
+     name              hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   29,951.03  0.0302  0.2175  0.0334  0.0329  0.0395  0.0415  0.1940  ±1.01%     2996
+   · superjson  18,056.05  0.0501  0.2413  0.0554  0.0542  0.0652  0.1729  0.1977  ±1.00%     1806
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - avg 415ms
+     name             hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   1,460.57  0.5659  1.7502  0.6847  0.6249  1.7420  1.7502  1.7502  ±5.83%      148
+   · superjson    348.01  2.4765  3.3156  2.8735  3.1347  3.3156  3.3156  3.3156  ±3.30%       35
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - avg 410ms
+     name             hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   1,329.21  0.6902  0.9735  0.7523  0.7467  0.9650  0.9735  0.9735  ±1.03%      134
+   · superjson  1,144.66  0.7891  1.0923  0.8736  0.8608  1.0761  1.0923  1.0923  ±1.62%      115
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - avg (no preserve refs) 414ms
+     name             hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   1,708.09  0.4832  1.7160  0.5854  0.5267  1.6675  1.7160  1.7160  ±6.55%      171
+   · superjson    337.89  2.5201  3.4291  2.9595  3.3088  3.4291  3.4291  3.4291  ±4.19%       34
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - avg (no preserve refs) 407ms
+     name             hz     min      max    mean     p75     p99     p995     p999      rme  samples
+   · codables   1,205.86  0.4722  15.9679  0.8293  0.6821  1.9024  15.9679  15.9679  ±30.63%      121
+   · superjson  1,149.56  0.7804   1.0951  0.8699  0.8612  1.0793   1.0951   1.0951   ±1.52%      115
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - large 483ms
      name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
-   · codables   75.5727  12.7337  14.1465  13.2323  13.6160  14.1465  14.1465  14.1465  ±1.03%       38
-   · superjson  45.2308  20.6378  42.4918  22.1088  21.4889  42.4918  42.4918  42.4918  ±8.71%       23
+   · codables    216.55   3.6990   6.1078   4.6180   5.5463   6.1078   6.1078   6.1078  ±8.94%       22
+   · superjson  54.0048  17.9200  19.0082  18.5169  18.8204  19.0082  19.0082  19.0082  ±2.18%        6
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - large 433ms
+     name           hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   217.53  4.4535  4.8501  4.5971  4.6817  4.8501  4.8501  4.8501  ±1.17%       22
+   · superjson  183.11  5.1466  5.6428  5.4612  5.5689  5.6428  5.6428  5.6428  ±1.35%       19
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - large (no preserve refs) 468ms
+     name            hz      min      max     mean      p75      p99     p995     p999      rme  samples
+   · codables    284.14   2.9276   5.0573   3.5194   4.1419   5.0573   5.0573   5.0573   ±6.69%       29
+   · superjson  37.6992  17.9725  49.4501  26.5258  19.7721  49.4501  49.4501  49.4501  ±91.77%        4
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - large (no preserve refs) 429ms
+     name           hz     min     max    mean     p75     p99    p995    p999     rme  samples
+   · codables   340.87  2.7328  3.1689  2.9337  3.0258  3.1689  3.1689  3.1689  ±1.33%       35
+   · superjson  185.93  5.0819  5.5893  5.3784  5.4585  5.5893  5.5893  5.5893  ±1.27%       19
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - huge 2030ms
+     name            hz      min      max     mean      p75      p99     p995     p999      rme  samples
+   · codables   27.3526  35.5884  38.7765  36.5596  36.1306  38.7765  38.7765  38.7765   ±6.51%        4
+   · superjson   6.6980   143.59   163.82   149.30   145.96   163.82   163.82   163.82  ±10.38%        4
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - huge 955ms
+     name            hz      min      max     mean      p75      p99     p995     p999     rme  samples
+   · codables   28.6544  34.5987  35.2783  34.8987  34.8627  35.2783  35.2783  35.2783  ±1.28%        4
+   · superjson  21.8000  45.4027  46.1305  45.8716  46.0827  46.1305  46.1305  46.1305  ±1.15%        4
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > encode - huge (no preserve refs) 1943ms
+     name            hz      min      max     mean      p75      p99     p995     p999      rme  samples
+   · codables   41.1302  23.5985  24.7790  24.3130  24.7155  24.7790  24.7790  24.7790   ±2.90%        5
+   · superjson   6.3963   141.53   186.59   156.34   154.01   186.59   186.59   186.59  ±21.28%        4
+
+ ✓ tests/benchmark.bench.ts > benchmark > complex data > decode - huge (no preserve refs) 871ms
+     name            hz      min      max     mean      p75      p99     p995     p999      rme  samples
+   · codables   42.5339  23.3634  23.6537  23.5107  23.6287  23.6537  23.6537  23.6537   ±0.72%        5
+   · superjson  17.9188  47.4662  76.0539  55.8073  50.0072  76.0539  76.0539  76.0539  ±38.62%        4
 
  BENCH  Summary
 
   codables - tests/benchmark.bench.ts > benchmark > plain json > encode - 6mb
-    2.87x faster than superjson
+    3.68x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > plain json > decode - 6mb
-    1.11x faster than superjson
+    1.29x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > plain json > encode - 6mb (no preserve refs)
-    3.64x faster than superjson
+    6.85x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > plain json > decode - 6mb (no preserve refs)
-    1.10x faster than superjson
+    1.28x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - small
-    3.39x faster than superjson
+    3.89x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > decode - small
-    1.27x faster than superjson
+    1.68x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - small (no preserve refs)
-    3.91x faster than superjson
+    6.98x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > decode - small (no preserve refs)
-    1.24x faster than superjson
+    1.66x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - avg
-    3.51x faster than superjson
+    4.20x faster than superjson
 
-  superjson - tests/benchmark.bench.ts > benchmark > complex data > decode - avg
-    1.02x faster than codables
+  codables - tests/benchmark.bench.ts > benchmark > complex data > decode - avg
+    1.16x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - avg (no preserve refs)
-    3.99x faster than superjson
+    5.06x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > decode - avg (no preserve refs)
-    1.36x faster than superjson
+    1.05x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - large
-    3.55x faster than superjson
+    4.01x faster than superjson
 
-  superjson - tests/benchmark.bench.ts > benchmark > complex data > decode - large
-    1.01x faster than codables
+  codables - tests/benchmark.bench.ts > benchmark > complex data > decode - large
+    1.19x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - large (no preserve refs)
-    4.16x faster than superjson
+    7.54x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > decode - large (no preserve refs)
-    1.60x faster than superjson
+    1.83x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - huge
-    3.67x faster than superjson
+    4.08x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > decode - huge
-    1.24x faster than superjson
+    1.31x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > encode - huge (no preserve refs)
-    4.16x faster than superjson
+    6.43x faster than superjson
 
   codables - tests/benchmark.bench.ts > benchmark > complex data > decode - huge (no preserve refs)
-    1.67x faster than superjson
+    2.37x faster than superjson
 ```
 
 </details>
+
+### Summary
+
+**Encoding** - Codables is around ~3.5-4.2x faster than SuperJSON when encoding data, regardless of the size and complexity of the data. When not preserving references, performance improves significantly to ~5-7.5x faster.
+
+**Decoding** - Codables is consistently faster than SuperJSON across all test cases, with improvements ranging from 1.05x to 2.37x faster.
+
+### Dataset Details
+
+**Preserve refs** means encoder analyzes the data to find out if the same object is seen multiple times and then, when decoding, will also re-use object references.
+
+**Copy refs** means encoder will not preserve object references and decoded data will contain copies of the same object even if they were the same reference in the input.

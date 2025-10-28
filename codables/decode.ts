@@ -1,10 +1,10 @@
 import { DecodableTypeOf, getDecodableTypeOf } from "./utils/typeof";
 import { JSONArray, JSONValue } from "./types";
 import { RefAlias, Tag, TagKey } from "./format";
+import { addNumberPathSegment, addPathSegment } from "./utils/JSONPointer";
 
 import { Coder } from "./Coder";
 import { DecodeContext } from "./DecodeContext";
-import { addPathSegment } from "./utils/JSONPointer";
 import { getIsForbiddenProperty } from "./utils/security";
 import { getIsObject } from "./is";
 import { narrowType } from "./utils/assert";
@@ -59,7 +59,7 @@ function decodeArray<T>(input: any[], context: DecodeContext, coder: Coder, path
   context.registerRef(path, result);
 
   for (let key = 0; key < input.length; key++) {
-    const fullPath = addPathSegment(path, key);
+    const fullPath = addNumberPathSegment(path, key);
 
     const decoded = decodeInput<any>(input[key], context, coder, fullPath);
 

@@ -2,7 +2,6 @@ import { Coder } from "../Coder";
 import { Memberwise, MemberwiseExclude } from "../decorators";
 import { codable } from "../decorators/codable";
 import { codableClass } from "../decorators/codableClass";
-import { getCodableProperties } from "../decorators/properties";
 
 describe("decorators", () => {
   it("should register a class as codable", () => {

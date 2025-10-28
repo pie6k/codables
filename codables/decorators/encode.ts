@@ -1,7 +1,7 @@
+import { CodableClassFieldsMap, FieldMetadata } from "./registry";
 import { getCodableProperties, getExternalProperties } from "./properties";
 
 import { AnyClass } from "./types";
-import { CodableClassFieldsMap } from "./registry";
 import { externalReference } from "../ExternalReference";
 
 export type ClassEncoder<T extends AnyClass> = (instance: InstanceType<T>) => ConstructorParameters<T>;
@@ -29,6 +29,13 @@ export function createDefaultClassEncoder<T extends AnyClass>(
 ): ClassEncoder<T> {
   let fields: CodableClassFieldsMap<T> | null = null;
 
+  // Makes iteration faster by avoiding assignments to local variables
+  let instanceKey: string | number | symbol;
+  let metadata: FieldMetadata;
+
+  let externalKey: string;
+  let externalRef: { key: string; isOptional: boolean };
+
   return (instance: InstanceType<T>) => {
     const externalKeysMap = getExternalProperties(Class);
     const data: Record<string, any> = {};
@@ -37,14 +44,14 @@ export function createDefaultClassEncoder<T extends AnyClass>(
       fields = getFieldsInfo(Class, fieldsFromOptions);
     }
 
-    for (const [instanceKey, metadata] of fields.entries()) {
+    for ([instanceKey, metadata] of fields.entries()) {
       const encodeAs = metadata.encodeAs ?? instanceKey;
       data[encodeAs as string] = instance[instanceKey];
     }
 
     if (externalKeysMap) {
-      for (const [key, externalRef] of externalKeysMap.entries()) {
-        data[key] = externalReference(externalRef.key, externalRef.isOptional);
+      for ([externalKey, externalRef] of externalKeysMap.entries()) {
+        data[externalKey] = externalReference(externalRef.key, externalRef.isOptional);
       }
     }
 

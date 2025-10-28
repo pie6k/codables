@@ -6,6 +6,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    // const enums
+
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationDir": "./dist/types",

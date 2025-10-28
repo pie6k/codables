@@ -1,11 +1,11 @@
 import { $$bigInt, $$num, $$symbol, $$undefined } from "./builtin";
+import { CodableTypeOf, getCodableTypeOf } from "./utils/typeof";
 import { JSONPrimitive, JSONValue } from "./types";
+import { addNumberPathSegment, addPathSegment } from "./utils/JSONPointer";
 
 import { Coder } from "./Coder";
 import { EncodeContext } from "./EncodeContext";
-import { addPathSegment } from "./utils/JSONPointer";
 import { createTag } from "./CodableType";
-import { getCodableTypeOf } from "./utils/typeof";
 import { getIsForbiddenProperty } from "./utils/security";
 import { narrowType } from "./utils/assert";
 
@@ -17,10 +17,6 @@ import { narrowType } from "./utils/assert";
  */
 function getShouldEscapeKey(key: string) {
   return /^~*\$\$/.test(key);
-}
-
-function getShouldEscapeMaybeTag(input: Record<string, any>): boolean {
-  return input.length === 2 && typeof input[0] === "string" && getShouldEscapeKey(input[0]);
 }
 
 export function encodeInput(input: unknown, encodeContext: EncodeContext, coder: Coder, path: string): JSONValue {
@@ -95,7 +91,7 @@ export function encodeInput(input: unknown, encodeContext: EncodeContext, coder:
     const result: any[] = [];
 
     for (let i = 0; i < input.length; i++) {
-      result[i] = encodeInput(input[i], encodeContext, coder, addPathSegment(path, i));
+      result[i] = encodeInput(input[i], encodeContext, coder, addNumberPathSegment(path, i));
     }
 
     return result;
