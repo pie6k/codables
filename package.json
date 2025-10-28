@@ -2,16 +2,18 @@
   "name": "@codables/root",
   "private": true,
   "version": "0.0.1",
-  "packageManager": "yarn@4.6.0",
+  "packageManager": "yarn@4.10.3",
   "workspaces": {
     "packages": [
       "codables",
-      "playground"
+      "playground",
+      "docs"
     ]
   },
   "scripts": {
     "codables": "yarn workspace codables",
-    "playground": "yarn workspace playground"
+    "playground": "yarn workspace playground",
+    "docs": "yarn workspace docs"
   },
   "devDependencies": {
     "mobx": "^6.15.0",
