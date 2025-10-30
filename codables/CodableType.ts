@@ -7,6 +7,7 @@ import { EncodeContext } from "./EncodeContext";
 export interface CodableTypeOptions {
   priority?: number;
   dependencies?: CodableDependencies;
+  isFlat?: boolean;
 }
 
 interface CodableTypeDefinition<Item, Data> {
@@ -39,11 +40,13 @@ export class CodableType<Item = any, Data = any> {
     this.tagKey = `$$${this.name}`;
     this.priority = definition.options?.priority ?? DEFAULT_PRIORITY;
     this.dependencies = definition.options?.dependencies ?? null;
+    this.isFlat = definition.options?.isFlat ?? false;
   }
 
   readonly name: string;
   readonly priority: number;
   readonly dependencies: CodableDependencies | null;
+  readonly isFlat: boolean;
 
   readonly tagKey: TagKey<typeof this.name>;
 

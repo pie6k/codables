@@ -41,10 +41,7 @@ describe("circular references", () => {
 
     const encoded = defaultCoder.encode([foo, bar]);
 
-    expect(encoded).toEqual([
-      { bar: { foo: { $$ref: "/0" } } },
-      { $$ref: "/0/bar" },
-    ]);
+    expect(encoded).toEqual([{ bar: { foo: { $$ref: "/0" } } }, { $$ref: "/0/bar" }]);
 
     const decoded = defaultCoder.decode<any>(encoded);
 
@@ -224,4 +221,21 @@ describe("preserve references", () => {
     expect(decoded).toEqual(input);
     expect(decoded[0]).not.toBe(decoded[1]);
   });
+});
+
+describe("directly referenced in set", () => {
+  const foo = new Set<any>();
+  foo.add(foo);
+
+  const originalValues = [...foo.values()];
+  expect(foo).toBe(originalValues[0]);
+
+  const encoded = defaultCoder.encode(foo);
+  expect(encoded).toEqual({ $$Set: [{ $$ref: "/" }] });
+
+  const decoded = defaultCoder.decode<typeof foo>(encoded);
+  const values = [...decoded.values()];
+  // console.log({ values });
+  expect(values[0]).not.toBe(null);
+  expect(values[0]).toBe(decoded);
 });

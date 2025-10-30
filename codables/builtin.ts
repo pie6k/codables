@@ -29,13 +29,18 @@ export const $$date = createCodableType(
 
     return new Date(maybeISOString);
   },
+  {
+    isFlat: true,
+  },
 );
 
 export const $$set = createCodableType(
   "Set",
   (value) => value instanceof Set,
   (set) => [...set],
-  (array) => new Set(array),
+  (array, context) => {
+    return new Set(array);
+  },
 );
 
 export const $$map = createCodableType(
@@ -97,6 +102,9 @@ export const $$undefined = createCodableType(
   (value) => value === undefined,
   () => null,
   () => undefined,
+  {
+    isFlat: true,
+  },
 );
 
 export const $$bigInt = createCodableType(
@@ -104,6 +112,9 @@ export const $$bigInt = createCodableType(
   (value) => typeof value === "bigint",
   (bigInt) => bigInt.toString(),
   (string) => BigInt(string),
+  {
+    isFlat: true,
+  },
 );
 
 export const $$regexp = createCodableType(
@@ -123,6 +134,9 @@ export const $$regexp = createCodableType(
     const [source, flags] = sourceOrSourceAndFlags;
     return new RegExp(source, flags);
   },
+  {
+    isFlat: true,
+  },
 );
 
 export const $$url = createCodableType(
@@ -130,6 +144,9 @@ export const $$url = createCodableType(
   (value) => value instanceof URL,
   (url) => url.toString(),
   (string) => new URL(string),
+  {
+    isFlat: true,
+  },
 );
 
 const symbolsRegistry = new Map<string, symbol>();
@@ -145,6 +162,9 @@ export const $$symbol = createCodableType(
     return symbolKey;
   },
   (symbolKey) => symbolsRegistry.get(symbolKey) ?? Symbol.for(symbolKey),
+  {
+    isFlat: true,
+  },
 );
 
 export const $$typedArray = createCodableType(
@@ -159,6 +179,10 @@ export const $$typedArray = createCodableType(
   ({ type, data }) => {
     return new (getTypedArrayConstructor(type))(data);
   },
+  {
+    // Almost not, but can contain NaN
+    isFlat: false,
+  },
 );
 
 /**
@@ -170,6 +194,9 @@ export const $$num = createCodableType(
   (value): value is number => typeof value === "number" && !!getSpecialNumberType(value),
   getSpecialNumberType,
   decodeSpecialNumber,
+  {
+    isFlat: true,
+  },
 );
 
 export const $$urlSearchParams = createCodableType(
@@ -177,4 +204,7 @@ export const $$urlSearchParams = createCodableType(
   (value) => value instanceof URLSearchParams,
   (urlSearchParams) => urlSearchParams.toString(),
   (string) => new URLSearchParams(string),
+  {
+    isFlat: false,
+  },
 );

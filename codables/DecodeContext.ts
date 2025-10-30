@@ -1,7 +1,7 @@
+import { DecodableTypeOf, getDecodableTypeOf } from "./utils/typeof";
 import { JSONArray, JSONObject, JSONValue } from "./types";
 import { RefAlias, Tag, getTagValue } from "./format";
 
-import { getDecodableTypeOf } from "./utils/typeof";
 import { narrowType } from "./utils/assert";
 
 export interface DecodeOptions {
@@ -10,6 +10,7 @@ export interface DecodeOptions {
 
 export function analyzeEncodedData(data: JSONValue, context: DecodeContext) {
   const decodableTypeOf = getDecodableTypeOf(data, context);
+
   switch (decodableTypeOf) {
     case "primitive":
       return;

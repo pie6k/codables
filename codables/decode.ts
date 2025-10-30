@@ -58,12 +58,12 @@ function decodeArray<T>(input: any[], context: DecodeContext, coder: Coder, path
 
   context.registerRef(path, result);
 
-  for (let key = 0; key < input.length; key++) {
-    const fullPath = addNumberPathSegment(path, key);
+  for (let index = 0; index < input.length; index++) {
+    const fullPath = addNumberPathSegment(path, index);
 
-    const decoded = decodeInput<any>(input[key], context, coder, fullPath);
+    const decoded = decodeInput<any>(input[index], context, coder, fullPath);
 
-    result[key] = decoded;
+    result[index] = decoded;
 
     if (context.hasRefAliases && getIsObject(decoded)) {
       context.registerRef(fullPath, decoded);

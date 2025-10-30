@@ -11,7 +11,7 @@ import { $$externalReference } from "./ExternalReference";
 import { AnyClass } from "./decorators/types";
 import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
-import { encodeInput } from "./encode";
+import { performEncode } from "./encode";
 import { resolveCodableDependencies } from "./dependencies";
 
 const DEFAULT_TYPES = [...Object.values(builtinTypesMap), $$externalReference].filter(getIsCodableType);
@@ -151,7 +151,7 @@ export class Coder {
   encode<T>(value: T, options?: EncodeOptions): JSONValue {
     const encodeContext = new EncodeContext(options);
 
-    return encodeInput(value, encodeContext, this, "/");
+    return performEncode(value, encodeContext, this, "/");
   }
 
   decode<T>(value: JSONValue, options?: DecodeOptions): T {

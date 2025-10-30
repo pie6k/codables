@@ -19,7 +19,7 @@ function getShouldEscapeKey(key: string) {
   return /^~*\$\$/.test(key);
 }
 
-export function encodeInput(input: unknown, encodeContext: EncodeContext, coder: Coder, path: string): JSONValue {
+export function performEncode(input: unknown, encodeContext: EncodeContext, coder: Coder, path: string): JSONValue {
   const codableTypeOf = getCodableTypeOf(input);
 
   switch (codableTypeOf) {
@@ -74,15 +74,13 @@ export function encodeInput(input: unknown, encodeContext: EncodeContext, coder:
      *
      * `$$set` tells what type it is, and `[1, 2, 3]` is the data needed to decode it later
      */
+    let encodedTypeData = matchingType.encode(input, encodeContext);
 
-    return matchingType.createTag(
-      encodeInput(
-        matchingType.encode(input, encodeContext),
-        encodeContext,
-        coder,
-        addPathSegment(path, matchingType.tagKey),
-      ),
-    );
+    if (!matchingType.isFlat) {
+      encodedTypeData = performEncode(encodedTypeData, encodeContext, coder, addPathSegment(path, matchingType.tagKey));
+    }
+
+    return matchingType.createTag(encodedTypeData);
   }
 
   if (codableTypeOf === "array") {
@@ -91,7 +89,7 @@ export function encodeInput(input: unknown, encodeContext: EncodeContext, coder:
     const result: any[] = [];
 
     for (let i = 0; i < input.length; i++) {
-      result[i] = encodeInput(input[i], encodeContext, coder, addNumberPathSegment(path, i));
+      result[i] = performEncode(input[i], encodeContext, coder, addNumberPathSegment(path, i));
     }
 
     return result;
@@ -128,7 +126,7 @@ export function encodeInput(input: unknown, encodeContext: EncodeContext, coder:
      */
     if (getIsForbiddenProperty(key)) continue;
 
-    result[key] = encodeInput(input[key], encodeContext, coder, addPathSegment(path, key));
+    result[key] = performEncode(input[key], encodeContext, coder, addPathSegment(path, key));
   }
 
   return result;
