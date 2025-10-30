@@ -86,7 +86,7 @@ export function getDecodableTypeOf(input: JSONValue, context: DecodeContext) {
 
     if (key === "$$ref") {
       // Match [$$ref, "path"]
-      if (typeof input.$$ref === "string") return "ref-tag";
+      if (typeof input.$$ref === "number") return "ref-tag";
 
       // Something else, eg {"$$ref": { foo: "bar" }} - not a tag -> treat as normal array
       return "record";

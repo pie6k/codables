@@ -1,12 +1,12 @@
 import { $$bigInt, $$num, $$symbol, $$undefined } from "./builtin";
-import { CodableTypeOf, getCodableTypeOf } from "./utils/typeof";
-import { JSONPrimitive, JSONValue } from "./types";
-import { addNumberPathSegment, addPathSegment } from "./utils/JSONPointer";
+import { maybeEncodeNumber, maybeEscapeSpecialString } from "./specialStrings";
 
 import { Coder } from "./Coder";
 import { EncodeContext } from "./EncodeContext";
+import { JSONValue } from "./types";
 import { createTag } from "./CodableType";
 import { getIsForbiddenProperty } from "./utils/security";
+import { getSpecialNumberType } from "./utils/numbers";
 import { narrowType } from "./utils/assert";
 
 /**
@@ -19,115 +19,129 @@ function getShouldEscapeKey(key: string) {
   return /^~*\$\$/.test(key);
 }
 
-export function performEncode(input: unknown, encodeContext: EncodeContext, coder: Coder, path: string): JSONValue {
-  const codableTypeOf = getCodableTypeOf(input);
+const ARRAY_REF_ID_REGEXP = /^\$\$id:(\d+)$/;
 
-  switch (codableTypeOf) {
-    case "primitive":
-      return input as JSONPrimitive;
-    case "special-number":
-      return $$num.encodeTag(input as number, encodeContext);
+const OBJECT_PROTOTYPE = Object.prototype;
+
+export function performEncode(input: unknown, encodeContext: EncodeContext, coder: Coder): JSONValue {
+  if (input === null) return null;
+
+  switch (typeof input) {
+    case "boolean":
+      return input;
+    case "string":
+      return maybeEscapeSpecialString(input);
+    case "number":
+      return maybeEncodeNumber(input);
     case "symbol":
-      return $$symbol.encodeTag(input as symbol, encodeContext);
+      return $$symbol.encodeTag(input, encodeContext);
     case "bigint":
-      return $$bigInt.encodeTag(input as bigint, encodeContext);
+      return $$bigInt.encodeTag(input, encodeContext);
     case "undefined":
-      return $$undefined.encodeTag(input as undefined, encodeContext);
+      return `$$undefined`;
+    // We do not encode functions
     case "function":
       return null;
   }
 
   // Either a record or an array
-  narrowType<object>(input);
 
   if (encodeContext.preserveReferences) {
     // See if this object was already present before at some other path
-    const alreadySeenAtPath = encodeContext.getAlreadySeenObjectPath(input);
+    const refId = encodeContext.getAlreadySeenObjectId(input);
 
-    if (alreadySeenAtPath !== null) {
+    if (refId !== null) {
       // If so, instead of continuing - return an alias to the already seen object
-      return createTag("ref", alreadySeenAtPath);
+      return createTag("ref", refId);
     }
 
     /**
      * It is seen for the first time, register it so if it is seen again - we can return an alias to the already seen object
      */
-    encodeContext.registerNewSeenObject(input, path);
+    encodeContext.registerNewSeenObject(input);
   }
 
-  if (codableTypeOf === "custom-object") {
-    const matchingType = coder.getMatchingTypeFor(input);
-
-    if (!matchingType) {
-      switch (encodeContext.unknownMode) {
-        case "unchanged":
-          return input as JSONValue;
-        case "null":
-          return null;
-        case "throw":
-          throw new Error("Not able to encode - no matching type found", input);
-      }
-    }
-
-    /**
-     * wrapper is an object like { $$set: [1, 2, 3] }
-     *
-     * `$$set` tells what type it is, and `[1, 2, 3]` is the data needed to decode it later
-     */
-    let encodedTypeData = matchingType.encode(input, encodeContext);
-
-    if (!matchingType.isFlat) {
-      encodedTypeData = performEncode(encodedTypeData, encodeContext, coder, addPathSegment(path, matchingType.tagKey));
-    }
-
-    return matchingType.createTag(encodedTypeData);
-  }
-
-  if (codableTypeOf === "array") {
-    narrowType<any[]>(input);
-
+  if (Array.isArray(input)) {
     const result: any[] = [];
 
+    encodeContext.registerEncoded(input, result);
+
     for (let i = 0; i < input.length; i++) {
-      result[i] = performEncode(input[i], encodeContext, coder, addNumberPathSegment(path, i));
+      const inputValue = input[i];
+
+      if (i === 0 && typeof inputValue === "string" && ARRAY_REF_ID_REGEXP.test(inputValue)) {
+        result[i] = `~${inputValue}`;
+        continue;
+      }
+
+      // We push instead of `result[i], because it is possible that array was marked referenced with markEncodedAsReferenced
+      result.push(performEncode(inputValue, encodeContext, coder));
     }
 
     return result;
   }
 
-  // Record
-  const keys = Object.keys(input);
+  const inputPrototype = Object.getPrototypeOf(input);
+
+  // Plain record aka {}
+  if (inputPrototype === OBJECT_PROTOTYPE || inputPrototype === null) {
+    const keys = Object.keys(input);
+
+    const result = {} as Record<string, any>;
+
+    encodeContext.registerEncoded(input, result);
+
+    // Seems the fastest way to iterate (https://jsfiddle.net/hikarii_flow/295v7sb3/)
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+
+      narrowType<keyof typeof input>(key);
+
+      const encodeKey = getShouldEscapeKey(key) ? `~${key}` : key;
+
+      /**
+       * We are setting properties on the result object, so we need to skip forbidden properties
+       * such as `__proto__`, `constructor`, `prototype`, etc.
+       *
+       * This could be a potential security risk, allowing attackers to pollute the prototype chain.
+       */
+      if (getIsForbiddenProperty(key)) continue;
+
+      result[encodeKey] = performEncode(input[key], encodeContext, coder);
+    }
+
+    return result;
+  }
+
+  // Custom object
+
+  const matchingType = coder.getMatchingTypeFor(input);
+
+  if (!matchingType) {
+    switch (encodeContext.unknownMode) {
+      case "unchanged":
+        return input as JSONValue;
+      case "null":
+        return null;
+      case "throw":
+        throw new Error("Not able to encode - no matching type found", input);
+    }
+  }
 
   /**
-   * Quite edge case:
-   * Data that collides with our internal format was explicitly provided.
-   * We need to escape it, or otherwise this data would be decoded as a custom type later
+   * wrapper is an object like { $$set: [1, 2, 3] }
    *
-   * Will turn eg { $$set: [1, 2, 3] } into { "~$$set": [1, 2, 3] }
+   * `$$set` tells what type it is, and `[1, 2, 3]` is the data needed to decode it later
    */
+  let encodedTypeData = matchingType.encode(input, encodeContext);
 
-  if (keys.length === 1 && getShouldEscapeKey(keys[0])) {
-    input = { [`~${keys[0]}`]: input[keys[0] as keyof typeof input] };
-    keys[0] = `~${keys[0]}`;
-
-    narrowType<Record<string, any>>(input);
+  if (!matchingType.isFlat) {
+    encodedTypeData = performEncode(encodedTypeData, encodeContext, coder);
   }
 
-  const result = {} as Record<string, any>;
+  const tag = matchingType.createTag(encodedTypeData);
 
-  for (const key of keys) {
-    narrowType<keyof typeof input>(key);
+  encodeContext.registerEncoded(input, tag);
 
-    /**
-     * We are setting properties on the result object, so we need to skip forbidden properties
-     * such as `__proto__`, `constructor`, `prototype`, etc.
-     *
-     * This could be a potential security risk, allowing attackers to pollute the prototype chain.
-     */
-    if (getIsForbiddenProperty(key)) continue;
-
-    result[key] = performEncode(input[key], encodeContext, coder, addPathSegment(path, key));
-  }
-
-  return result;
+  return tag;
 }

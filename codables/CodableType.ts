@@ -19,11 +19,9 @@ interface CodableTypeDefinition<Item, Data> {
 }
 
 export function createTag<Name extends string, Data>(name: Name, data: Data) {
-  const tag = {} as Tag<Data, Name>;
-
-  tag[`$$${name}`] = data;
-
-  return tag;
+  return {
+    [`$$${name}`]: data,
+  } as Tag<Data, Name>;
 }
 
 /**
@@ -50,20 +48,20 @@ export class CodableType<Item = any, Data = any> {
 
   readonly tagKey: TagKey<typeof this.name>;
 
-  encode(value: Item, context: EncodeContext): Data {
-    return this.definition.encode(value, context);
+  encode(original: Item, context: EncodeContext): Data {
+    return this.definition.encode(original, context);
   }
 
-  encodeTag(value: Item, context: EncodeContext): Tag<Data, typeof this.name> {
-    return createTag(this.name, this.encode(value, context));
+  encodeTag(original: Item, context: EncodeContext): Tag<Data, typeof this.name> {
+    return createTag(this.name, this.encode(original, context));
   }
 
   decode(data: Data, context: DecodeContext): Item {
     return this.definition.decode(data, context);
   }
 
-  canHandle(value: unknown): value is Item {
-    return this.definition.canHandle(value);
+  canHandle(original: unknown): original is Item {
+    return this.definition.canHandle(original);
   }
 
   createTag(data: Data): Tag<Data, typeof this.name> {

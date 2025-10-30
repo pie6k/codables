@@ -1,3 +1,5 @@
+import { JSONArray, JSONObject } from "./types";
+
 type UnknownMode = "unchanged" | "null" | "throw";
 
 export interface EncodeOptions {
@@ -38,19 +40,86 @@ export class EncodeContext {
   readonly unknownMode: UnknownMode;
   readonly preserveReferences: boolean;
 
-  private refFirstSeenPath = new Map<object, string>();
+  private seenObjects = new WeakSet<object>();
+  private refIdsRegistry = new Map<object, number>();
+
+  private markedAsReferenced = new WeakSet<object>();
+  private encodedObjects = new Map<object, JSONObject | JSONArray>();
+
+  private markAllEncodedAsReferenced() {
+    for (const [original, id] of this.refIdsRegistry.entries()) {
+      const encoded = this.encodedObjects.get(original);
+
+      if (!encoded) {
+        throw new Error("Encoded object not found");
+      }
+
+      this.markEncodedAsReferenced(original, id);
+    }
+  }
+
+  finalize() {
+    this.markAllEncodedAsReferenced();
+  }
+
+  private markEncodedAsReferenced(original: object, id: number) {
+    if (this.markedAsReferenced.has(original)) return;
+
+    const encoded = this.encodedObjects.get(original);
+
+    if (!encoded) {
+      throw new Error("Encoded object not found");
+    }
+
+    if (Array.isArray(encoded)) {
+      encoded.unshift(`$$id:${id}`);
+    } else {
+      encoded["$$id"] = id;
+    }
+
+    this.markedAsReferenced.add(original);
+  }
+
+  registerEncoded(original: object, encoded: JSONObject | JSONArray) {
+    if (!this.preserveReferences) return;
+
+    if (this.encodedObjects.has(original)) {
+      console.warn("Object already encoded", original, encoded);
+      return;
+    }
+
+    this.encodedObjects.set(original, encoded);
+  }
 
   /**
    * Call it the first time some object is seen.
    */
-  registerNewSeenObject(object: object, path: string) {
-    this.refFirstSeenPath.set(object, path);
+  registerNewSeenObject(object: object) {
+    if (!this.preserveReferences) return;
+
+    this.seenObjects.add(object);
   }
 
   /**
    * Returns where the object was first seen at.
    */
-  getAlreadySeenObjectPath(object: object): string | null {
-    return this.refFirstSeenPath.get(object) ?? null;
+  getAlreadySeenObjectId(original: object): number | null {
+    if (!this.preserveReferences) return null;
+
+    if (!this.seenObjects.has(original)) {
+      return null;
+    }
+
+    const existingId = this.refIdsRegistry.get(original);
+
+    if (existingId !== undefined) {
+      return existingId;
+    }
+
+    const id = this.refIdsRegistry.size;
+
+    this.refIdsRegistry.set(original, id);
+
+    return id;
   }
 }

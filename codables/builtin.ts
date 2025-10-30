@@ -38,9 +38,7 @@ export const $$set = createCodableType(
   "Set",
   (value) => value instanceof Set,
   (set) => [...set],
-  (array, context) => {
-    return new Set(array);
-  },
+  (array) => new Set(array),
 );
 
 export const $$map = createCodableType(

@@ -48,6 +48,24 @@ function benchmarkComplexData(name: string, data: any, preserveReferences: boole
       options,
     );
   });
+
+  describe("encode and decode", () => {
+    bench(
+      "codables",
+      () => {
+        defaultCoder.copy(data);
+      },
+      options,
+    );
+
+    bench(
+      "superjson",
+      () => {
+        deserialize(serialize(data));
+      },
+      options,
+    );
+  });
 }
 
 describe.runIf(RUN_BENCHMARK)("benchmark", () => {

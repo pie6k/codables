@@ -11,29 +11,6 @@ describe("misc", () => {
   });
 });
 
-describe("DecodeContext", () => {
-  it("works with refs inside custom types", () => {
-    const context = new DecodeContext({
-      $$map: [
-        ["foo", { foo: "foo" }],
-        ["bar", { $$ref: "/$$map/0/1" }],
-      ],
-    });
-
-    expect(context.hasCustomTypes).toBe(true);
-    expect(context.hasRefAliases).toBe(true);
-    expect(context.presentRefAliases.has("/$$map/0/1")).toBe(true);
-    expect(context.presentRefAliases).toEqual(new Set(["/$$map/0/1"]));
-  });
-
-  it("works with custom types, but no refs", () => {
-    const context = new DecodeContext({ $$map: [["foo", { foo: "foo" }]] });
-
-    expect(context.hasCustomTypes).toBe(true);
-    expect(context.hasRefAliases).toBe(false);
-  });
-});
-
 describe("POJO with symbol key", () => {
   it("should ignore symbol keys", () => {
     const foo = { [Symbol("foo")]: "foo" };

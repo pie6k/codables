@@ -1,4 +1,4 @@
-import { Coder, defaultCoder } from "../Coder";
+import { Coder, defaultCoder, encode } from "../Coder";
 
 import { JSONValue } from "../types";
 import { captureWarnings } from "./testUtils";
@@ -21,32 +21,34 @@ function expectSerializeAndDeserialize(value: unknown, encodedShape?: JSONValue)
 }
 
 describe("basic", () => {
-  // it("works", () => {
-  //   const date = new Date("2025-01-01T00:00:00.000Z");
-  //   const foo = coder.encode(date);
+  it("works", () => {
+    const date = new Date("2025-01-01T00:00:00.000Z");
+    const foo = encode(date);
 
-  //   // expect(coder.encode(date)).toEqual({ $$date: date.toISOString() });
-  //   // expect(coder.decode({ $$date: date.toISOString() })).toEqual(date);
-  // });
+    expect(foo).toEqual({ $$Date: "2025-01-01T00:00:00.000Z" });
+
+    // expect(coder.encode(date)).toEqual({ $$date: date.toISOString() });
+    // expect(coder.decode({ $$date: date.toISOString() })).toEqual(date);
+  });
 
   it("should encode and decode back properly all basic types", () => {
     expectSerializeAndDeserialize(new Date("2025-01-01T00:00:00.000Z"), {
       $$Date: "2025-01-01T00:00:00.000Z",
     });
     expectSerializeAndDeserialize(new Date("invalid"), { $$Date: null });
-    expectSerializeAndDeserialize(Infinity, { $$num: "Infinity" });
-    expectSerializeAndDeserialize(-Infinity, { $$num: "-Infinity" });
+    expectSerializeAndDeserialize(Infinity, "$$Infinity");
+    expectSerializeAndDeserialize(-Infinity, "$$-Infinity");
     expectSerializeAndDeserialize(0.5);
     expectSerializeAndDeserialize(123n, { $$BigInt: "123" });
     expectSerializeAndDeserialize(BigInt(123), { $$BigInt: "123" });
     expectSerializeAndDeserialize(Symbol.for("foo"), { $$Symbol: "foo" });
     expectSerializeAndDeserialize(Symbol("foo"), { $$Symbol: "foo" });
-    expectSerializeAndDeserialize({ foo: undefined }, { foo: { $$undefined: null } });
+    expectSerializeAndDeserialize({ foo: undefined }, { foo: "$$undefined" });
     expectSerializeAndDeserialize({
       a: new Int8Array([1, 2]),
       b: new Uint8ClampedArray(3),
     });
-    expectSerializeAndDeserialize(undefined, { $$undefined: null });
+    expectSerializeAndDeserialize(undefined, "$$undefined");
     expectSerializeAndDeserialize(null, null);
     expectSerializeAndDeserialize(new URL("https://example.com/"), {
       $$URL: "https://example.com/",
@@ -59,19 +61,19 @@ describe("basic", () => {
       "b\\": [/'b\\'[0]: regex that becomes a string/],
     });
 
-    expectSerializeAndDeserialize(-0, { $$num: "-0" });
+    expectSerializeAndDeserialize(-0, "$$-0");
 
     expectSerializeAndDeserialize(new Float64Array([NaN, 0, NaN, 1]), {
       $$typedArray: {
         type: "float64",
-        data: [{ $$num: "NaN" }, 0, { $$num: "NaN" }, 1],
+        data: ["$$NaN", 0, "$$NaN", 1],
       },
     });
 
     expectSerializeAndDeserialize(String("foo"), "foo");
     expectSerializeAndDeserialize(Number(123), 123);
     expectSerializeAndDeserialize(Boolean(true), true);
-    expectSerializeAndDeserialize([0, , , 0], [0, { $$undefined: null }, { $$undefined: null }, 0]);
+    expectSerializeAndDeserialize([0, , , 0], [0, "$$undefined", "$$undefined", 0]);
 
     expectSerializeAndDeserialize(new URLSearchParams("a=1&b=2"), {
       $$URLSearchParams: "a=1&b=2",
@@ -421,6 +423,18 @@ describe("format collisions", () => {
     }
 
     expect(current).toEqual(input);
+  });
+
+  it("escapes array refs", () => {
+    const input = { foo: ["$$id:0", 1, 2, 3] };
+
+    const encoded = defaultCoder.encode(input);
+
+    expect(encoded).toEqual({ foo: ["~$$id:0", 1, 2, 3] });
+
+    const decoded = defaultCoder.decode<typeof input>(encoded);
+
+    expect(decoded).toEqual(input);
   });
 });
 

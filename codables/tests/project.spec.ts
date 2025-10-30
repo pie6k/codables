@@ -107,8 +107,8 @@ describe("misc", () => {
                   {
                     zooms: [
                       { $$Zoom: [{ start: 0, end: 1, scale: 1 }] },
-                      { $$Zoom: [{ start: 2, end: 3, scale: 2 }] },
-                      { $$ref: "/$$Project/0/scenes/$$_Set/0/$$Scene/0/zooms/1" },
+                      { $$id: 0, $$Zoom: [{ start: 2, end: 3, scale: 2 }] },
+                      { $$ref: 0 },
                     ],
                   },
                 ],
@@ -168,8 +168,8 @@ describe("misc", () => {
                   {
                     zooms: [
                       { $$Zoom: [{ end: 1, scale: 1, start: 0 }] },
-                      { $$Zoom: [{ end: 3, scale: 2, start: 2 }] },
-                      { $$ref: "/$$Project/0/scenes/$$_Set/0/$$Scene/0/zooms/1" },
+                      { $$id: 0, $$Zoom: [{ end: 3, scale: 2, start: 2 }] },
+                      { $$ref: 0 },
                       { $$Zoom: [{ end: 5, scale: 3, start: 4 }] },
                     ],
                   },
@@ -234,10 +234,10 @@ describe("from readme", () => {
       $$GameState: [
         {
           players: {
-            $$Set: [{ $$Player: [{ name: "Foo", score: 100 }] }],
+            $$Set: [{ $$id: 0, $$Player: [{ name: "Foo", score: 100 }] }],
           },
           createdAt: { $$Date: "2025-11-27T23:00:00.000Z" },
-          activePlayer: { $$ref: "/$$GameState/0/players/$$Set/0" },
+          activePlayer: { $$ref: 0 },
         },
       ],
     });

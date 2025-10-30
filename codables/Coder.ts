@@ -151,15 +151,17 @@ export class Coder {
   encode<T>(value: T, options?: EncodeOptions): JSONValue {
     const encodeContext = new EncodeContext(options);
 
-    return performEncode(value, encodeContext, this, "/");
+    const result = performEncode(value, encodeContext, this);
+
+    encodeContext.finalize();
+
+    return result;
   }
 
   decode<T>(value: JSONValue, options?: DecodeOptions): T {
     const context = new DecodeContext(value, options);
 
-    if (context.isPlainJSON) return copyJSON(value) as T;
-
-    return decodeInput<T>(value, context, this, "/");
+    return decodeInput<T>(value, context, this);
   }
 
   stringify<T>(value: T): string {
