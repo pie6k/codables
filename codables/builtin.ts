@@ -1,9 +1,8 @@
-import { TypedArrayTypeName, getIsTypedArray, getTypedArrayConstructor, getTypedArrayType } from "./utils/typedArrays";
-import { decodeSpecialNumber, getSpecialNumberType } from "./utils/numbers";
+import { TYPED_ARRAY_CLASSES, getIsTypedArray, getTypedArrayConstructor, getTypedArrayType } from "./utils/typedArrays";
 import { getSymbolKey, removeUndefinedProperties } from "./utils/misc";
 
 import { EncodeContext } from "./EncodeContext";
-import { createCodableType } from "./CodableType";
+import { codableType } from "./CodableType";
 import { getErrorExtraProperties } from "./utils/errors";
 
 /**
@@ -16,7 +15,7 @@ function getIsValidDate(date: Date): boolean {
   return !isNaN(date.getTime());
 }
 
-export const $$date = createCodableType(
+export const $$date = codableType(
   "Date",
   (value) => value instanceof Date,
   (date) => {
@@ -31,24 +30,31 @@ export const $$date = createCodableType(
   },
   {
     isFlat: true,
+    Class: Date,
   },
 );
 
-export const $$set = createCodableType(
+export const $$set = codableType(
   "Set",
   (value) => value instanceof Set,
   (set) => [...set],
   (array) => new Set(array),
+  {
+    Class: Set,
+  },
 );
 
-export const $$map = createCodableType(
+export const $$map = codableType(
   "Map",
   (value) => value instanceof Map,
   (map) => [...map.entries()],
   (entries) => new Map(entries),
+  {
+    Class: Map,
+  },
 );
 
-export const $$error = createCodableType(
+export const $$error = codableType(
   "Error",
   (value) => value instanceof Error,
   (error: Error, context: EncodeContext) => {
@@ -93,9 +99,12 @@ export const $$error = createCodableType(
 
     return error;
   },
+  {
+    Class: Error,
+  },
 );
 
-export const $$undefined = createCodableType(
+export const $$undefined = codableType(
   "undefined",
   (value) => value === undefined,
   () => null,
@@ -105,7 +114,7 @@ export const $$undefined = createCodableType(
   },
 );
 
-export const $$bigInt = createCodableType(
+export const $$bigInt = codableType(
   "BigInt",
   (value) => typeof value === "bigint",
   (bigInt) => bigInt.toString(),
@@ -115,7 +124,7 @@ export const $$bigInt = createCodableType(
   },
 );
 
-export const $$regexp = createCodableType(
+export const $$regexp = codableType(
   "RegExp",
   (value) => value instanceof RegExp,
   ({ source, flags }) => {
@@ -134,22 +143,24 @@ export const $$regexp = createCodableType(
   },
   {
     isFlat: true,
+    Class: RegExp,
   },
 );
 
-export const $$url = createCodableType(
+export const $$url = codableType(
   "URL",
   (value) => value instanceof URL,
   (url) => url.toString(),
   (string) => new URL(string),
   {
     isFlat: true,
+    Class: URL,
   },
 );
 
 const symbolsRegistry = new Map<string, symbol>();
 
-export const $$symbol = createCodableType(
+export const $$symbol = codableType(
   "Symbol",
   (value) => typeof value === "symbol",
   (symbol) => {
@@ -165,7 +176,7 @@ export const $$symbol = createCodableType(
   },
 );
 
-export const $$typedArray = createCodableType(
+export const $$typedArray = codableType(
   "typedArray",
   getIsTypedArray,
   (value) => {
@@ -180,29 +191,17 @@ export const $$typedArray = createCodableType(
   {
     // Almost not, but can contain NaN
     isFlat: false,
+    Class: TYPED_ARRAY_CLASSES,
   },
 );
 
-/**
- * Handles special numbers like NaN, Infinity, -Infinity, -0 that are not correctly serialized by
- * regular JSON
- */
-export const $$num = createCodableType(
-  "num",
-  (value): value is number => typeof value === "number" && !!getSpecialNumberType(value),
-  getSpecialNumberType,
-  decodeSpecialNumber,
-  {
-    isFlat: true,
-  },
-);
-
-export const $$urlSearchParams = createCodableType(
+export const $$urlSearchParams = codableType(
   "URLSearchParams",
   (value) => value instanceof URLSearchParams,
   (urlSearchParams) => urlSearchParams.toString(),
   (string) => new URLSearchParams(string),
   {
     isFlat: false,
+    Class: URLSearchParams,
   },
 );

@@ -1,6 +1,5 @@
-import { JSONArray, JSONObject, JSONValue } from "./types";
-
-import { narrowType } from "./utils/assert";
+import { JSONValue } from "./types";
+import { tryToSetInParent } from "./utils/misc";
 
 export interface DecodeOptions {
   externalReferences?: Record<string, unknown>;
@@ -19,6 +18,16 @@ export class DecodeContext {
 
   resolveRefId(id: number): object | null {
     return this.resolvedRefs.get(id) ?? null;
+  }
+
+  private readonly warnedOnce = new Set<string>();
+
+  warnOnce(key: string, message: string) {
+    if (this.warnedOnce.has(key)) return;
+
+    this.warnedOnce.add(key);
+
+    console.warn(message);
   }
 
   readonly externalReferencesMap: Map<string, unknown>;

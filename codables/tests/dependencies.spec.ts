@@ -2,7 +2,7 @@ import { CodableDependencies } from "../dependencies";
 import { Coder } from "../Coder";
 import { codable } from "../decorators/codable";
 import { codableClass } from "../decorators/codableClass";
-import { createCodableType } from "../CodableType";
+import { codableType } from "../CodableType";
 
 describe("dependencies", () => {
   it("should auto discover dependencies from decorated", () => {
@@ -22,7 +22,7 @@ describe("dependencies", () => {
 
     const bar = new Bar();
 
-    const matchingType = coder.getMatchingTypeFor(bar);
+    const matchingType = coder.getMatchingTypeForObject(bar);
 
     expect(matchingType).not.toBeNull();
 
@@ -40,7 +40,7 @@ describe("dependencies", () => {
     class Bar {}
     class Foo {}
 
-    const $$Bar = createCodableType(
+    const $$Bar = codableType(
       "Bar",
       (value) => value instanceof Bar,
       () => null,
@@ -49,7 +49,7 @@ describe("dependencies", () => {
         dependencies: (): CodableDependencies => [$$Foo] as CodableDependencies,
       },
     );
-    const $$Foo = createCodableType<Foo, null>(
+    const $$Foo = codableType<Foo, null>(
       "Foo",
       (value) => value instanceof Foo,
       () => null,
@@ -65,11 +65,11 @@ describe("dependencies", () => {
     const fooCoder = new Coder([$$Foo]);
     const barCoder = new Coder([$$Bar]);
 
-    expect(fooCoder.getMatchingTypeFor(foo)).not.toBeNull();
-    expect(fooCoder.getMatchingTypeFor(bar)).not.toBeNull();
+    expect(fooCoder.getMatchingTypeForObject(foo)).not.toBeNull();
+    expect(fooCoder.getMatchingTypeForObject(bar)).not.toBeNull();
 
-    expect(barCoder.getMatchingTypeFor(bar)).not.toBeNull();
-    expect(barCoder.getMatchingTypeFor(foo)).not.toBeNull();
+    expect(barCoder.getMatchingTypeForObject(bar)).not.toBeNull();
+    expect(barCoder.getMatchingTypeForObject(foo)).not.toBeNull();
   });
 
   it("auto discovers nested dependencies", () => {
@@ -82,6 +82,6 @@ describe("dependencies", () => {
 
     const coder = new Coder([Baz]);
 
-    expect(coder.getMatchingTypeFor(new Foo())).not.toBeNull();
+    expect(coder.getMatchingTypeForObject(new Foo())).not.toBeNull();
   });
 });

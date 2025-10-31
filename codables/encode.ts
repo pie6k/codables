@@ -1,4 +1,5 @@
-import { $$bigInt, $$num, $$symbol, $$undefined } from "./builtin";
+import { $$bigInt, $$symbol } from "./builtin";
+import { MAYBE_ESCAPED_ARRAY_REF_ID_REGEXP, getIsMaybeEscapedTagKey } from "./format";
 import { maybeEncodeNumber, maybeEscapeSpecialString } from "./specialStrings";
 
 import { Coder } from "./Coder";
@@ -6,20 +7,7 @@ import { EncodeContext } from "./EncodeContext";
 import { JSONValue } from "./types";
 import { createTag } from "./CodableType";
 import { getIsForbiddenProperty } from "./utils/security";
-import { getSpecialNumberType } from "./utils/numbers";
 import { narrowType } from "./utils/assert";
-
-/**
- * It is either our tag with $$ or already escaped tag (~$$) which we will escape further.
- * This is very rare case:
- * - someone encoded data that already looks like our internal format
- * - someone encoded data, and then encoded encoded data again instead of decoding it
- */
-function getShouldEscapeKey(key: string) {
-  return /^~*\$\$/.test(key);
-}
-
-const ARRAY_REF_ID_REGEXP = /^\$\$id:(\d+)$/;
 
 const OBJECT_PROTOTYPE = Object.prototype;
 
@@ -69,7 +57,7 @@ export function performEncode(input: unknown, encodeContext: EncodeContext, code
     for (let i = 0; i < input.length; i++) {
       const inputValue = input[i];
 
-      if (i === 0 && typeof inputValue === "string" && ARRAY_REF_ID_REGEXP.test(inputValue)) {
+      if (i === 0 && typeof inputValue === "string" && MAYBE_ESCAPED_ARRAY_REF_ID_REGEXP.test(inputValue)) {
         result[i] = `~${inputValue}`;
         continue;
       }
@@ -97,7 +85,7 @@ export function performEncode(input: unknown, encodeContext: EncodeContext, code
 
       narrowType<keyof typeof input>(key);
 
-      const encodeKey = getShouldEscapeKey(key) ? `~${key}` : key;
+      const encodeKey = getIsMaybeEscapedTagKey(key) ? `~${key}` : key;
 
       /**
        * We are setting properties on the result object, so we need to skip forbidden properties
@@ -115,7 +103,7 @@ export function performEncode(input: unknown, encodeContext: EncodeContext, code
 
   // Custom object
 
-  const matchingType = coder.getMatchingTypeFor(input);
+  const matchingType = coder.getMatchingTypeForObject(input);
 
   if (!matchingType) {
     switch (encodeContext.unknownMode) {

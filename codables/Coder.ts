@@ -1,7 +1,7 @@
 import * as builtinTypesMap from "./builtin";
 
 import { AnyCodableClass, JSONValue } from "./types";
-import { CodableType, CodableTypeOptions, createCodableType, getIsCodableType } from "./CodableType";
+import { CodableType, CodableTypeOptions, codableType, getIsCodableType } from "./CodableType";
 import { DecodeContext, DecodeOptions } from "./DecodeContext";
 import { EncodeContext, EncodeOptions } from "./EncodeContext";
 import { assert, assertGet } from "./utils/assert";
@@ -70,6 +70,7 @@ function updateTypesOrderByPriority(currentTypes: Map<string, CodableType>) {
 
 export class Coder {
   private readonly typesMap = new Map<string, CodableType>();
+  private readonly codableTypeByClassMap = new Map<AnyClass, CodableType>();
 
   constructor(extraTypes: CodableTypeOrClass[] = []) {
     this.typesMap = createTypesMap([...DEFAULT_TYPES]);
@@ -77,8 +78,18 @@ export class Coder {
     this.register(...extraTypes);
   }
 
-  private reorderTypes() {
+  private organizeTypes() {
     updateTypesOrderByPriority(this.typesMap);
+
+    this.codableTypeByClassMap.clear();
+
+    for (const type of this.typesMap.values()) {
+      if (type.classes) {
+        for (const Class of type.classes) {
+          this.codableTypeByClassMap.set(Class, type);
+        }
+      }
+    }
   }
 
   getTypeByName(name: string): CodableType | null {
@@ -112,7 +123,7 @@ export class Coder {
       this.registerSingleType(dependency);
     }
 
-    this.reorderTypes();
+    this.organizeTypes();
   }
 
   registerType(...types: Array<CodableType>) {
@@ -145,7 +156,7 @@ export class Coder {
     decode: (data: Data) => Item,
     options?: CodableTypeOptions,
   ) {
-    return this.registerType(createCodableType(name, canEncode, encode, decode, options));
+    return this.registerType(codableType(name, canEncode, encode, decode, options));
   }
 
   encode<T>(value: T, options?: EncodeOptions): JSONValue {
@@ -161,7 +172,9 @@ export class Coder {
   decode<T>(value: JSONValue, options?: DecodeOptions): T {
     const context = new DecodeContext(value, options);
 
-    return decodeInput<T>(value, context, this);
+    const result = decodeInput<T>(value, context, this);
+
+    return result;
   }
 
   stringify<T>(value: T): string {
@@ -176,7 +189,13 @@ export class Coder {
     return this.decode<T>(this.encode(value));
   }
 
-  getMatchingTypeFor(input: unknown): CodableType | null {
+  getMatchingTypeForObject<T extends object>(input: T): CodableType<T> | null {
+    const codableTypeByClass = this.codableTypeByClassMap.get(input.constructor as AnyClass);
+
+    if (codableTypeByClass?.canHandle(input)) {
+      return codableTypeByClass;
+    }
+
     for (const type of this.typesMap.values()) {
       if (type.canHandle(input)) {
         return type;
@@ -187,7 +206,7 @@ export class Coder {
   }
 
   get isDefault() {
-    return this === defaultCoder;
+    return this === coder;
   }
 }
 
@@ -195,24 +214,24 @@ export function createCoder(extraTypes: CodableType[] = []) {
   return new Coder(extraTypes);
 }
 
-export const defaultCoder = createCoder();
+export const coder = createCoder();
 
 export function decode<T>(value: JSONValue, options?: DecodeOptions): T {
-  return defaultCoder.decode(value, options);
+  return coder.decode(value, options);
 }
 
 export function encode<T>(value: T): JSONValue {
-  return defaultCoder.encode(value);
+  return coder.encode(value);
 }
 
 export function stringify<T>(value: T): string {
-  return defaultCoder.stringify(value);
+  return coder.stringify(value);
 }
 
 export function parse<T>(value: string): T {
-  return defaultCoder.parse(value);
+  return coder.parse(value);
 }
 
 export function copy<T>(value: T): T {
-  return defaultCoder.copy(value);
+  return coder.copy(value);
 }

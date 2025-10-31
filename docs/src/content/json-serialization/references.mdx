@@ -66,7 +66,7 @@ class Node {
   constructor(public value: string, public parent?: Node) {}
 }
 
-const $$node = createCodableType(
+const $$node = codableType(
   "Node",
   (value) => value instanceof Node,
   (node) => ({ value: node.value, parent: node.parent }),

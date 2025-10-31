@@ -17,9 +17,9 @@ Codables automatically handles JavaScript types that standard JSON cannot serial
 | `URL` | `{ $$URL: "https://example.com/" }` |
 | `URLSearchParams` | `{ $$URLSearchParams: "a=1&b=2" }` |
 | `Error` | See examples below |
-| `undefined` | `{ $$undefined: null }` |
+| `undefined` | `"$$undefined"` |
 | Typed Arrays | `{ $$typedArray: { type: "uint8", data: [1, 2, 3] } }` |
-| Special Numbers | `{ $$num: "NaN" }`, `{ $$num: "Infinity" }`, `{ $$num: "-0" }` |
+| Special Numbers | `"$$NaN"`, `"$$Infinity"`, `"$$-Infinity"`, `"$$-0"` |
 
 ## Examples
 
@@ -89,7 +89,7 @@ encode(float64Array);
 // { 
 //   $$typedArray: { 
 //     type: "float64", 
-//     data: [{ $$num: "NaN" }, 0, { $$num: "Infinity" }] 
+//     data: ["$$NaN", 0, "$$Infinity"] 
 //   } 
 // }
 ```
@@ -97,10 +97,10 @@ encode(float64Array);
 ### Special Numbers
 
 ```typescript
-encode(NaN);        // { $$num: "NaN" }
-encode(Infinity);   // { $$num: "Infinity" }
-encode(-Infinity);  // { $$num: "-Infinity" }
-encode(-0);         // { $$num: "-0" }
+encode(NaN);        // "$$NaN" }
+encode(Infinity);   // "$$Infinity"
+encode(-Infinity);  // "$$-Infinity"
+encode(-0);         // "$$-0"
 ```
 
 ## Format Safety

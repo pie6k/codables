@@ -124,9 +124,9 @@ Codables automatically handles JavaScript types that standard JSON cannot serial
 | `URL`             | `{ $$URL: "https://example.com/" }`                    |
 | `URLSearchParams` | `{ $$URLSearchParams: "foo=bar&baz=qux" }`             |
 | `Error`           | `{ $$Error: "Something went wrong" }`                  |
-| `undefined`       | `{ $$undefined: null }`                                |
+| `undefined`       | `"$$undefined"`                                        |
 | Typed Arrays      | `{ $$typedArray: { type: "uint8", data: [1, 2, 3] } }` |
-| Special Numbers   | `{ $$num: "NaN" }`, `{ $$num: "Infinity" }`            |
+| Special Numbers   | `"$$NaN"`, `"$$Infinity"`, `"$$-Infinity"`, `"$$-0"`   |
 
 [Read more about supported types →](https://codableslib.com/docs/json-serialization/supported-types)
 
@@ -185,9 +185,9 @@ const decoded = coder.decode<MyClass>(encoded);
 You can also use lower-level API to create custom types and encode/decode them manually.
 
 ```typescript
-import { createCodableType, Coder } from "codables";
+import { codableType, Coder } from "codables";
 
-const $$custom = createCodableType(
+const $$custom = codableType(
   "CustomType", // name of the type
   (value) => value instanceof CustomType, // how to detect some value should be encoded using this type
   (instance) => instance.data, // how to encode the value (might return rich data like `Map` or `Set`, or even other custom types)

@@ -2,7 +2,7 @@ import { Callout } from 'nextra/components'
 
 # Custom Types
 
-Codables allows you to define custom serialization for your own types using `createCodableType` and custom `Coder` instances.
+Codables allows you to define custom serialization for your own types using `codableType` and custom `Coder` instances.
 
 <Callout type="info">
 When using [Declarative Serialization](/docs/declarative-serialization), in most cases custom types will be created automatically for you.
@@ -11,13 +11,13 @@ When using [Declarative Serialization](/docs/declarative-serialization), in most
 ## Creating Custom Types
 
 ```typescript
-import { createCodableType, Coder } from "codables";
+import { codableType, Coder } from "codables";
 
 class Point {
   constructor(public x: number, public y: number) {}
 }
 
-const $$point = createCodableType(
+const $$point = codableType(
   "Point", // name of the type
   (value) => value instanceof Point, // how to detect some value should be encoded using this type
   (point) => [point.x, point.y], // how to encode the value (might return rich data like `Map` or `Set`, or even other custom types)
@@ -58,14 +58,14 @@ class Person {
   constructor(public name: string, public address: Address, public bornAt: Date) {}
 }
 
-const $$address = createCodableType(
+const $$address = codableType(
   "Address",
   (value) => value instanceof Address,
   (addr) => [addr.street, addr.city],
   ([street, city]) => new Address(street, city)
 );
 
-const $$person = createCodableType(
+const $$person = codableType(
   "Person", 
   (value) => value instanceof Person,
   (person) => ({ name: person.name, address: person.address, bornAt: person.bornAt }),

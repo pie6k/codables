@@ -1,18 +1,18 @@
 import { Coder } from "../Coder";
-import { createCodableType } from "../CodableType";
+import { codableType } from "../CodableType";
 import { codable } from "../decorators/codable";
 import { codableClass } from "../decorators/codableClass";
 import { observable, isObservableSet, autorun, action, isObservableMap, computed } from "mobx";
 import { combineDecorators } from "../decorators/utils";
 
-const $$observableSet = createCodableType(
+const $$observableSet = codableType(
   "_Set",
   (value) => isObservableSet(value),
   (set) => [...set],
   (items) => observable.set(items),
 );
 
-const $$observableMap = createCodableType(
+const $$observableMap = codableType(
   "_Map",
   (value) => isObservableMap(value),
   (map) => [...map],

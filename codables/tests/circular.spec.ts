@@ -1,13 +1,11 @@
-import { Coder, defaultCoder } from "../Coder";
-
-import { JSONValue } from "../types";
+import { Coder, coder } from "../Coder";
 
 describe("circular references", () => {
   it("should encode circular references 1", () => {
     const foo = { text: "foo", self: null as any };
     foo.self = foo;
 
-    const encoded = defaultCoder.encode(foo);
+    const encoded = coder.encode(foo);
 
     expect(encoded).toEqual({
       $$id: 0,
@@ -15,7 +13,7 @@ describe("circular references", () => {
       self: { $$ref: 0 },
     });
 
-    const decoded = defaultCoder.decode<any>(encoded);
+    const decoded = coder.decode<any>(encoded);
 
     expect(decoded).toEqual(foo);
     expect(decoded.self).toBe(decoded);
@@ -27,7 +25,7 @@ describe("circular references", () => {
 
     foo.bar = bar;
 
-    expect(defaultCoder.encode(foo)).toEqual({
+    expect(coder.encode(foo)).toEqual({
       $$id: 0,
       foo: "foo",
       bar: { foo: { $$ref: 0 } },
@@ -41,7 +39,7 @@ describe("circular references", () => {
     foo.bar = bar;
     bar.foo = foo;
 
-    const encoded = defaultCoder.encode([foo, bar]);
+    const encoded = coder.encode([foo, bar]);
 
     expect(encoded).toEqual([
       {
@@ -54,7 +52,7 @@ describe("circular references", () => {
       { $$ref: 1 },
     ]);
 
-    const decoded = defaultCoder.decode<any>(encoded);
+    const decoded = coder.decode<any>(encoded);
 
     expect(decoded).toEqual([foo, bar]);
 
@@ -74,7 +72,7 @@ describe("circular references", () => {
       ["bar", foo],
     ]);
 
-    const encoded = defaultCoder.encode(input);
+    const encoded = coder.encode(input);
 
     expect(encoded).toEqual({
       $$Map: [
@@ -83,7 +81,7 @@ describe("circular references", () => {
       ],
     });
 
-    const decoded = defaultCoder.decode<typeof input>(encoded);
+    const decoded = coder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual(input);
     expect(decoded.get("foo")).toBe(decoded.get("bar"));
@@ -95,7 +93,7 @@ describe("referential equalities", () => {
     const a = { foo: "foo" };
 
     const input = [a, a];
-    const encoded = defaultCoder.encode(input);
+    const encoded = coder.encode(input);
     expect(encoded).toEqual([
       {
         $$id: 0,
@@ -104,7 +102,7 @@ describe("referential equalities", () => {
       { $$ref: 0 },
     ]);
 
-    const decoded = defaultCoder.decode<typeof input>(encoded);
+    const decoded = coder.decode<typeof input>(encoded);
 
     expect(decoded).toEqual([{ foo: "foo" }, { foo: "foo" }]);
     expect(decoded[0]).toBe(decoded[1]);
@@ -165,13 +163,13 @@ describe("dots in paths or keys", () => {
     const foo = { foo: "foo" };
     const bar = { "bar/bar": [foo, foo] };
 
-    const encoded = defaultCoder.encode(bar);
+    const encoded = coder.encode(bar);
 
     expect(encoded).toEqual({
       "bar/bar": [{ $$id: 0, foo: "foo" }, { $$ref: 0 }],
     });
 
-    const decoded = defaultCoder.decode<typeof bar>(encoded);
+    const decoded = coder.decode<typeof bar>(encoded);
     expect(decoded).toEqual(bar);
     expect(decoded["bar/bar"][0]).toBe(decoded["bar/bar"][1]);
   });
@@ -184,7 +182,7 @@ describe("misc", () => {
     const bar = { arr };
 
     const input = [foo, bar];
-    const encoded = defaultCoder.encode(input);
+    const encoded = coder.encode(input);
     expect(encoded).toEqual([
       {
         arr: ["$$id:0", 1, 2, 3],
@@ -192,7 +190,7 @@ describe("misc", () => {
       { arr: { $$ref: 0 } },
     ]);
 
-    const decoded = defaultCoder.decode<typeof input>(encoded);
+    const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual([foo, foo]);
     expect(decoded[0].arr).toBe(decoded[1].arr);
     expect(decoded[0].arr).toBe(decoded[1].arr);
@@ -207,13 +205,13 @@ describe("misc", () => {
       selected: option1,
     };
 
-    const encoded = defaultCoder.encode(select);
+    const encoded = coder.encode(select);
     expect(encoded).toEqual({
       options: [{ $$id: 0, value: "foo" }, { value: "foo" }],
       selected: { $$ref: 0 },
     });
 
-    const decoded = defaultCoder.decode<typeof select>(encoded);
+    const decoded = coder.decode<typeof select>(encoded);
     expect(decoded).toEqual(select);
     expect(decoded.selected).toBe(decoded.options[0]);
   });
@@ -222,10 +220,10 @@ describe("misc", () => {
     const regex = /foo/;
 
     const input = [regex, regex];
-    const encoded = defaultCoder.encode(input);
+    const encoded = coder.encode(input);
     expect(encoded).toEqual([{ $$RegExp: "foo", $$id: 0 }, { $$ref: 0 }]);
 
-    const decoded = defaultCoder.decode<typeof input>(encoded);
+    const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
     expect(decoded[0]).toBe(decoded[1]);
   });
@@ -236,10 +234,10 @@ describe("preserve references", () => {
     const foo = { foo: "foo" };
     const input = [foo, foo];
 
-    const encoded = defaultCoder.encode(input, { preserveReferences: false });
+    const encoded = coder.encode(input, { preserveReferences: false });
     expect(encoded).toEqual([{ foo: "foo" }, { foo: "foo" }]);
 
-    const decoded = defaultCoder.decode<typeof input>(encoded);
+    const decoded = coder.decode<typeof input>(encoded);
     expect(decoded).toEqual(input);
     expect(decoded[0]).not.toBe(decoded[1]);
   });
@@ -250,10 +248,10 @@ describe("array", () => {
     const arr: any[] = [];
     arr.push(arr, arr, arr);
 
-    const encoded = defaultCoder.encode(arr);
+    const encoded = coder.encode(arr);
     expect(encoded).toEqual([`$$id:0`, { $$ref: 0 }, { $$ref: 0 }, { $$ref: 0 }]);
 
-    const decoded = defaultCoder.decode<typeof arr>(encoded);
+    const decoded = coder.decode<typeof arr>(encoded);
     expect(decoded[0]).toBe(decoded);
     expect(decoded[1]).toBe(decoded);
     expect(decoded[2]).toBe(decoded);
@@ -261,18 +259,37 @@ describe("array", () => {
   });
 });
 
-describe.skip("directly referenced in set", () => {
+describe("directly referenced in set", () => {
   it("should properly encode and decode directly referenced in set", () => {
     const foo = new Set<any>();
     foo.add(foo);
-    const originalValues = [...foo.values()];
-    expect(foo).toBe(originalValues[0]);
-    const encoded = defaultCoder.encode(foo);
-    expect(encoded).toEqual({ $$id: 0, $$Set: [{ $$ref: 0 }] });
-    const decoded = defaultCoder.decode<typeof foo>(encoded);
-    const values = [...decoded.values()];
-    // console.log({ values });
-    expect(values[0]).not.toBe(null);
-    expect(values[0]).toBe(decoded);
+
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({
+      $$id: 0,
+      $$Set: [{ $$ref: 0 }],
+    });
+    const decoded = coder.decode<typeof foo>(encoded);
+
+    const [firstItem] = decoded;
+
+    expect(firstItem).toBe(decoded);
+  });
+
+  it("handles nested sets", () => {
+    const foo = new Set<any>();
+    foo.add({ foo: new Map([["bar", foo]]) });
+
+    const encoded = coder.encode(foo);
+
+    expect(encoded).toEqual({
+      $$id: 0,
+      $$Set: [{ foo: { $$Map: [["bar", { $$ref: 0 }]] } }],
+    });
+    const decoded = coder.decode<typeof foo>(encoded);
+
+    console.dir(decoded, { depth: null });
+    console.dir(foo, { depth: null });
   });
 });

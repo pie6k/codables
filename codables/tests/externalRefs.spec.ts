@@ -1,4 +1,4 @@
-import { Coder, defaultCoder } from "../Coder";
+import { Coder, coder } from "../Coder";
 
 import { codable } from "../decorators/codable";
 import { codableClass } from "../decorators/codableClass";
@@ -13,13 +13,13 @@ describe("external refs", () => {
       ext: externalReference<typeof someObject>("ext"),
     };
 
-    const encoded = defaultCoder.encode(data);
+    const encoded = coder.encode(data);
 
     expect(encoded).toEqual({
       ext: { $$external: { key: "ext", isOptional: false } },
     });
 
-    const decoded = defaultCoder.decode<typeof data>(encoded, { externalReferences: { ext: someObject } });
+    const decoded = coder.decode<typeof data>(encoded, { externalReferences: { ext: someObject } });
 
     expect(decoded.ext).toBe(someObject);
   });
@@ -29,10 +29,10 @@ describe("external refs", () => {
       ext: externalReference("ext"),
     };
 
-    const encoded = defaultCoder.encode(data);
+    const encoded = coder.encode(data);
 
     expect(() =>
-      defaultCoder.decode<typeof data>(encoded, { externalReferences: { nope: {} } }),
+      coder.decode<typeof data>(encoded, { externalReferences: { nope: {} } }),
     ).toThrowErrorMatchingInlineSnapshot(`[Error: External reference "ext" not found]`);
   });
 
@@ -109,13 +109,13 @@ describe("external refs", () => {
       ext: externalReference("ext", true),
     };
 
-    const encoded = defaultCoder.encode(data);
+    const encoded = coder.encode(data);
 
     expect(encoded).toEqual({
       ext: { $$external: { key: "ext", isOptional: true } },
     });
 
-    const decoded = defaultCoder.decode<typeof data>(encoded, { externalReferences: { none: {} } });
+    const decoded = coder.decode<typeof data>(encoded, { externalReferences: { none: {} } });
 
     expect(decoded.ext).toBeUndefined();
   });

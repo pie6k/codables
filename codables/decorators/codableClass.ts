@@ -1,7 +1,7 @@
 import { AnyClass, ClassDecorator, MakeRequired, MemberwiseClass } from "./types";
 import { ClassDecoder, ClassEncoder, createClassDecoder, createDefaultClassEncoder } from "./encode";
 import { CodableClassFieldsMap, FieldMetadata, codableClassFieldsRegistry, codableClassRegistry } from "./registry";
-import { CodableType, createCodableType } from "../CodableType";
+import { CodableType, codableType } from "../CodableType";
 
 import { CodableDependencies } from "../dependencies";
 import { getPrototypeChainLength } from "./prototype";
@@ -55,7 +55,7 @@ export function codableClass<T extends AnyClass>(
     const encoder: ClassEncoder<T> = maybeOptions?.encode ?? createDefaultClassEncoder(Class, keysFromOptions);
     const decoder: ClassDecoder<T> = createClassDecoder(Class, isUsingDefaultEncoder, keysFromOptions);
 
-    const type = createCodableType(
+    const type = codableType(
       name,
       (value): value is InstanceType<T> => value instanceof Class,
       encoder,
@@ -67,6 +67,7 @@ export function codableClass<T extends AnyClass>(
       {
         priority: getPrototypeChainLength(Class),
         dependencies: maybeOptions?.dependencies,
+        Class,
       },
     );
 

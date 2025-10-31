@@ -1,4 +1,13 @@
-import { RefAlias, Tag, TagKey, getIsReferencedTag, getIsTagKey } from "./format";
+import {
+  ARRAY_REF_ID_REGEXP,
+  ESCAPED_ARRAY_REF_ID_REGEXP,
+  RefAlias,
+  Tag,
+  TagKey,
+  getIsEscapedTagKey,
+  getIsReferencedTag,
+  getIsTagKey,
+} from "./format";
 
 import { Coder } from "./Coder";
 import { DecodeContext } from "./DecodeContext";
@@ -10,7 +19,7 @@ function resolveRefAlias<T>(input: RefAlias, context: DecodeContext): T {
   const referencedObject = context.resolveRefId(input.$$ref);
 
   if (!referencedObject) {
-    console.warn(`Reference could not be resolved while decoding (${input.$$ref})`);
+    context.warnOnce(`no-ref-${input.$$ref}`, `Reference could not be resolved while decoding (${input.$$ref})`);
 
     /**
      * TODO: Assumption here is that data is always encoded and decoded in the same order,
@@ -26,12 +35,7 @@ function resolveRefAlias<T>(input: RefAlias, context: DecodeContext): T {
   return referencedObject as T;
 }
 
-function resolveTypeTag<T>(
-  tag: Tag<JSONValue>, // eg { $$set: [1, 2, 3] }
-  tagKey: TagKey, // eg "$$set"
-  context: DecodeContext,
-  coder: Coder,
-): T {
+function resolveTypeTag<T>(tag: Tag<JSONValue>, tagKey: TagKey, context: DecodeContext, coder: Coder): T {
   const typeName = tagKey.slice(2); // eg "$$set" -> "set"
 
   const matchingType = coder.getTypeByName(typeName);
@@ -45,9 +49,10 @@ function resolveTypeTag<T>(
    * Decode data is present at eg input["$$set"], but it might contain some nested data that
    * needs to be decoded first.
    */
-  const decodedTypeInput = decodeInput(tag[tagKey], context, coder);
 
-  const result = matchingType.decode(decodedTypeInput, context) as T;
+  const payload = decodeInput(tag[tagKey], context, coder);
+
+  const result = matchingType.decode(payload, context, tag.$$id ?? null) as T;
 
   if (getIsReferencedTag(tag)) {
     // We know it is an object, otherwise nothing would be able to reference it in the first place
@@ -56,9 +61,6 @@ function resolveTypeTag<T>(
 
   return result;
 }
-
-const ARRAY_REF_ID_REGEXP = /^\$\$id:(\d+)$/;
-const ESCAPED_ARRAY_REF_ID_REGEXP = /^\~+\$\$id:(\d+)$/;
 
 function getMaybeCustomTypeTag(refId: number | undefined, keys: string[]) {
   // We determine conditions needed for a valid type tag
@@ -199,7 +201,7 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
     if (key === "$$id" || getIsForbiddenProperty(key)) continue;
 
     // If the key was escpaed, use unescaped version for assigning data to the result
-    const decodeKey = key.match(/^~+\$\$.+/) ? key.slice(1) : key;
+    const decodeKey = getIsEscapedTagKey(key) ? key.slice(1) : key;
 
     const inputValue = input[key];
 

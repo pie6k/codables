@@ -8,17 +8,17 @@ Codables works seamlessly with MobX, allowing you to serialize reactive state wh
 
 ```typescript
 import { observable, isObservableSet, isObservableMap, autorun, action, computed } from "mobx";
-import { codableClass, codable, Coder, createCodableType, combineDecorators } from "codables";
+import { codableClass, codable, Coder, codableType, combineDecorators } from "codables";
 
 // Create custom types for MobX observables
-const $$observableSet = createCodableType(
+const $$observableSet = codableType(
   "_Set",
   (value) => isObservableSet(value),
   (set) => [...set],
   (items) => observable.set(items)
 );
 
-const $$observableMap = createCodableType(
+const $$observableMap = codableType(
   "_Map", 
   (value) => isObservableMap(value),
   (map) => [...map],

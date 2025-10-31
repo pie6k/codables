@@ -21,3 +21,5 @@ export type ClassWithoutInput<T> = new () => T;
 export type ManuallyCodableClass<T> = new (...args: AtLeastOne<any>) => T;
 
 export type AnyCodableClass<T> = MemberwiseClass<T> | ManuallyCodableClass<T>;
+
+export type AnyClass = new (...args: any) => any;

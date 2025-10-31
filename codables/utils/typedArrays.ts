@@ -1,3 +1,5 @@
+import { getIsNotNull } from "../is";
+
 const TYPED_ARRAY_MAP = {
   uint8: typeof Uint8Array !== "undefined" ? Uint8Array : null,
   uint8clamped: typeof Uint8ClampedArray !== "undefined" ? Uint8ClampedArray : null,
@@ -9,6 +11,8 @@ const TYPED_ARRAY_MAP = {
   float32: typeof Float32Array !== "undefined" ? Float32Array : null,
   float64: typeof Float64Array !== "undefined" ? Float64Array : null,
 } as const;
+
+export const TYPED_ARRAY_CLASSES = Object.values(TYPED_ARRAY_MAP).filter(getIsNotNull);
 
 export type TypedArrayTypeName = keyof typeof TYPED_ARRAY_MAP;
 export type TypedArray = InstanceType<NonNullable<(typeof TYPED_ARRAY_MAP)[TypedArrayTypeName]>>;

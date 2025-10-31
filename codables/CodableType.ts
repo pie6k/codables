@@ -1,5 +1,7 @@
 import { Tag, TagKey } from "./format";
+import { Thunk, resolveThunk } from "./utils/misc";
 
+import { AnyClass } from "./types";
 import { CodableDependencies } from "./dependencies";
 import { DecodeContext } from "./DecodeContext";
 import { EncodeContext } from "./EncodeContext";
@@ -8,13 +10,17 @@ export interface CodableTypeOptions {
   priority?: number;
   dependencies?: CodableDependencies;
   isFlat?: boolean;
+  /**
+   * If provided, will allow Coder instance to faster find it in the registry for some input
+   */
+  Class?: AnyClass | AnyClass[];
 }
 
 interface CodableTypeDefinition<Item, Data> {
   name: string;
   canHandle: (value: unknown) => value is Item;
   encode: (data: Item, context: EncodeContext) => Data;
-  decode: (data: Data, context: DecodeContext) => Item;
+  decode: (data: Data, context: DecodeContext, referenceId: number | null) => Item;
   options?: CodableTypeOptions;
 }
 
@@ -39,12 +45,23 @@ export class CodableType<Item = any, Data = any> {
     this.priority = definition.options?.priority ?? DEFAULT_PRIORITY;
     this.dependencies = definition.options?.dependencies ?? null;
     this.isFlat = definition.options?.isFlat ?? false;
+
+    if (definition.options?.Class) {
+      const classOrClasses = definition.options.Class;
+
+      if (Array.isArray(classOrClasses)) {
+        this.classes = classOrClasses;
+      } else {
+        this.classes = [classOrClasses];
+      }
+    }
   }
 
   readonly name: string;
   readonly priority: number;
   readonly dependencies: CodableDependencies | null;
   readonly isFlat: boolean;
+  readonly classes: AnyClass[] | undefined;
 
   readonly tagKey: TagKey<typeof this.name>;
 
@@ -56,8 +73,8 @@ export class CodableType<Item = any, Data = any> {
     return createTag(this.name, this.encode(original, context));
   }
 
-  decode(data: Data, context: DecodeContext): Item {
-    return this.definition.decode(data, context);
+  decode(data: Data, context: DecodeContext, referenceId: number | null): Item {
+    return this.definition.decode(data, context, referenceId);
   }
 
   canHandle(original: unknown): original is Item {
@@ -69,11 +86,11 @@ export class CodableType<Item = any, Data = any> {
   }
 }
 
-export function createCodableType<Item, Data>(
+export function codableType<Item, Data>(
   name: string,
   canHandle: (value: unknown) => value is Item,
   encode: (data: Item, context: EncodeContext) => Data,
-  decode: (data: Data, context: DecodeContext) => Item,
+  decode: (data: Data, context: DecodeContext, referenceId: number | null) => Item,
   options?: CodableTypeOptions,
 ): CodableType<Item, Data> {
   return new CodableType({

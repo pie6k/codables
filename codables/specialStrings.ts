@@ -1,5 +1,3 @@
-const SPECIAL_STRINGS = ["$$undefined", "$$NaN", "$$-0", "$$Infinity", "$$-Infinity"] as const;
-
 const SPECIAL_STRINGS_REGEXP = /^\~*\$\$(?:undefined|NaN|-0|Infinity|-Infinity)$/;
 
 export function maybeEscapeSpecialString(input: string) {
