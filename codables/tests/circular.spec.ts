@@ -259,8 +259,8 @@ describe("array", () => {
   });
 });
 
-describe("directly referenced in set", () => {
-  it("should properly encode and decode directly referenced in set", () => {
+describe("directly referenced in itself", () => {
+  it("flat set ref itself", () => {
     const foo = new Set<any>();
     foo.add(foo);
 
@@ -270,11 +270,48 @@ describe("directly referenced in set", () => {
       $$id: 0,
       $$Set: [{ $$ref: 0 }],
     });
+
     const decoded = coder.decode<typeof foo>(encoded);
 
     const [firstItem] = decoded;
 
     expect(firstItem).toBe(decoded);
+  });
+
+  it("flat map ref itself", () => {
+    const foo = new Map<any, any>();
+    foo.set(foo, foo);
+
+    const encoded = coder.encode(foo);
+    expect(encoded).toEqual({
+      $$id: 0,
+      $$Map: [[{ $$ref: 0 }, { $$ref: 0 }]],
+    });
+
+    const decoded = coder.decode<typeof foo>(encoded);
+
+    expect(decoded.size).toBe(1);
+    const [[key, value]] = decoded;
+    expect(key).toBe(value);
+    expect(key).toBe(decoded);
+  });
+
+  it("flat map ref itself as valye", () => {
+    const foo = new Map<any, any>();
+    foo.set("foo", foo);
+
+    const encoded = coder.encode(foo);
+    expect(encoded).toEqual({
+      $$id: 0,
+      $$Map: [["foo", { $$ref: 0 }]],
+    });
+
+    const decoded = coder.decode<typeof foo>(encoded);
+
+    expect(decoded.size).toBe(1);
+    const [[key, value]] = decoded;
+    expect(key).toBe("foo");
+    expect(value).toBe(decoded);
   });
 
   it("handles nested sets", () => {
@@ -288,8 +325,5 @@ describe("directly referenced in set", () => {
       $$Set: [{ foo: { $$Map: [["bar", { $$ref: 0 }]] } }],
     });
     const decoded = coder.decode<typeof foo>(encoded);
-
-    console.dir(decoded, { depth: null });
-    console.dir(foo, { depth: null });
   });
 });

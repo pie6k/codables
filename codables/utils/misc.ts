@@ -1,4 +1,7 @@
+import { Path, splitPath } from "./path";
 import { getIsObject, getIsRecord } from "../is";
+
+import { getIsTagKey } from "../format";
 
 export type Thunk<T> = T | (() => Thunk<T>);
 
@@ -59,27 +62,90 @@ function setInSetAtIndex(set: Set<unknown>, index: number, value: unknown) {
   }
 }
 
-export function tryToSetInParent(parent: object, keyInParent: string | number, value: unknown) {
-  if (Array.isArray(parent)) {
-    parent[keyInParent as number] = value;
-
-    return true;
+function getInSetAtIndex<T>(target: Set<T>, index: number): T {
+  let i = 0;
+  for (const item of target) {
+    if (i === index) return item;
+    i++;
   }
 
-  if (parent instanceof Map) {
-    parent.set(keyInParent, value);
-    return true;
+  throw new Error(`Index out of bounds: ${index}`);
+}
+
+enum EntryTarget {
+  Key = 0,
+  Value = 1,
+}
+
+function updateEntryInMap(map: Map<unknown, unknown>, index: number, target: EntryTarget, newValue: unknown) {
+  const entries = [...map.entries()];
+
+  if (index < 0 || index >= entries.length) throw new Error(`Index out of bounds: ${index}`);
+
+  if (target === EntryTarget.Value) {
+    const entry = entries[index];
+    map.set(entry[0], newValue);
+    return;
   }
 
-  if (parent instanceof Set) {
-    setInSetAtIndex(parent, keyInParent as number, value);
-    return true;
+  entries[index][EntryTarget.Key] = newValue;
+
+  map.clear();
+  for (const entry of entries) {
+    map.set(entry[0], entry[1]);
+  }
+}
+
+function getInMapByIndex(map: Map<unknown, unknown>, entryIndex: number, target: EntryTarget) {
+  const entries = [...map.entries()];
+  if (entryIndex < 0 || entryIndex >= entries.length) throw new Error(`Index out of bounds: ${entryIndex}`);
+
+  return entries[entryIndex][target];
+}
+
+export function tryToSetInParent(parent: object, path: Path, value: unknown) {
+  const segments = splitPath(path);
+
+  let target = parent;
+
+  while (segments.length > 1) {
+    const segment = segments.shift()!;
+
+    if (getIsTagKey(segment)) continue;
+
+    if (target instanceof Set) {
+      target = getInSetAtIndex(target, Number(segment));
+      continue;
+    }
+
+    if (target instanceof Map) {
+      let entryIndex = Number(segment);
+      const entryTarget: EntryTarget = Number(segments.shift()!);
+      const shouldSetNow = segments.length === 0;
+
+      if (shouldSetNow) {
+        updateEntryInMap(target, entryIndex, entryTarget, value);
+
+        return;
+      }
+
+      target = getInMapByIndex(target, entryIndex, entryTarget) as object;
+      continue;
+    }
+
+    target = target[segment as keyof typeof target] as object;
   }
 
-  if (getIsRecord(parent)) {
-    parent[keyInParent as string] = value;
-    return true;
+  const lastSegment = segments.shift()!;
+
+  if (target instanceof Set) {
+    setInSetAtIndex(target, Number(lastSegment), value);
+    return;
   }
 
-  return false;
+  if (target instanceof Map) {
+    throw new Error("Bad state: Map should be already processed");
+  }
+
+  Reflect.set(target, lastSegment, value);
 }

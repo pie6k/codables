@@ -8,6 +8,7 @@ import {
   getIsReferencedTag,
   getIsTagKey,
 } from "./format";
+import { Path, addNumberPathSegment, addPathSegment } from "./utils/path";
 
 import { Coder } from "./Coder";
 import { DecodeContext } from "./DecodeContext";
@@ -15,11 +16,11 @@ import { JSONValue } from "./types";
 import { decodeMaybeSpecialString } from "./specialStrings";
 import { getIsForbiddenProperty } from "./utils/security";
 
-function resolveRefAlias<T>(input: RefAlias, context: DecodeContext): T {
+function resolveRefAlias<T>(input: RefAlias, context: DecodeContext, path: Path): T {
   const referencedObject = context.resolveRefId(input.$$ref);
 
   if (!referencedObject) {
-    context.warnOnce(`no-ref-${input.$$ref}`, `Reference could not be resolved while decoding (${input.$$ref})`);
+    context.registerPendingReference(input.$$ref, path);
 
     /**
      * TODO: Assumption here is that data is always encoded and decoded in the same order,
@@ -35,7 +36,7 @@ function resolveRefAlias<T>(input: RefAlias, context: DecodeContext): T {
   return referencedObject as T;
 }
 
-function resolveTypeTag<T>(tag: Tag<JSONValue>, tagKey: TagKey, context: DecodeContext, coder: Coder): T {
+function resolveTypeTag<T>(tag: Tag<JSONValue>, tagKey: TagKey, context: DecodeContext, coder: Coder, path: Path): T {
   const typeName = tagKey.slice(2); // eg "$$set" -> "set"
 
   const matchingType = coder.getTypeByName(typeName);
@@ -50,7 +51,7 @@ function resolveTypeTag<T>(tag: Tag<JSONValue>, tagKey: TagKey, context: DecodeC
    * needs to be decoded first.
    */
 
-  const payload = decodeInput(tag[tagKey], context, coder);
+  const payload = decodeInput(tag[tagKey], context, coder, addPathSegment(path, tagKey));
 
   const result = matchingType.decode(payload, context, tag.$$id ?? null) as T;
 
@@ -89,7 +90,7 @@ function getMaybeCustomTypeTag(refId: number | undefined, keys: string[]) {
   return false as const;
 }
 
-export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: Coder): T {
+export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: Coder, path: Path): T {
   if (input === null) return input as T;
 
   switch (typeof input) {
@@ -129,7 +130,7 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
     // We are ready to process the array
     for (let index = 0; index < input.length; index++) {
       const inputToDecode = input[index];
-      const decoded = decodeInput<any>(inputToDecode, context, coder);
+      const decoded = decodeInput<any>(inputToDecode, context, coder, addNumberPathSegment(path, index));
 
       // tag was marked as being referenced by something else, eg { $$id: 0, $$set: [1, 2, 3] }
       if (getIsReferencedTag(inputToDecode)) {
@@ -149,7 +150,7 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
 
   // It is a ref alias, eg { $$ref: 0 }, we need to replace it with the object it is referencing
   if (keys.length === 1 && typeof input.$$ref === "number") {
-    return resolveRefAlias<T>(input as RefAlias, context);
+    return resolveRefAlias<T>(input as RefAlias, context, path);
   }
 
   /**
@@ -174,7 +175,7 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
 
   if (customTypeTag) {
     // it is a custom type tag
-    const result = resolveTypeTag<T>(input, customTypeTag, context, coder);
+    const result = resolveTypeTag<T>(input, customTypeTag, context, coder, path);
 
     // tag was marked as being referenced by something else, eg { $$id: 0, $$set: [1, 2, 3] }
     if (refid !== undefined) {
@@ -205,7 +206,7 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
 
     const inputValue = input[key];
 
-    const decoded = decodeInput<any>(inputValue, context, coder);
+    const decoded = decodeInput<any>(inputValue, context, coder, addPathSegment(path, key));
 
     result[decodeKey] = decoded;
 

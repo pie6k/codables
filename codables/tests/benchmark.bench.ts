@@ -84,8 +84,8 @@ describe.runIf(RUN_BENCHMARK)("benchmark", () => {
       "avg (no preserve refs)": generateData({ i: 10, j: 10, sameReferences: false }),
       large: generateData({ i: 30, j: 20, sameReferences: true }),
       "large (no preserve refs)": generateData({ i: 30, j: 20, sameReferences: false }),
-      huge: generateData({ i: 70, j: 60, sameReferences: true }),
-      "huge (no preserve refs)": generateData({ i: 70, j: 60, sameReferences: false }),
+      // huge: generateData({ i: 70, j: 60, sameReferences: true }),
+      // "huge (no preserve refs)": generateData({ i: 70, j: 60, sameReferences: false }),
     };
 
     for (const [name, data] of Object.entries(dataSets)) {

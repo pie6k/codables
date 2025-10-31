@@ -9,6 +9,7 @@ import { getCodableClassType, getIsCodableClass } from "./decorators/registry";
 
 import { $$externalReference } from "./ExternalReference";
 import { AnyClass } from "./decorators/types";
+import { ROOT_PATH } from "./utils/path";
 import { copyJSON } from "./utils/json";
 import { decodeInput } from "./decode";
 import { performEncode } from "./encode";
@@ -172,7 +173,9 @@ export class Coder {
   decode<T>(value: JSONValue, options?: DecodeOptions): T {
     const context = new DecodeContext(value, options);
 
-    const result = decodeInput<T>(value, context, this);
+    const result = decodeInput<T>(value, context, this, ROOT_PATH);
+
+    context.resolvePendingReferences(result);
 
     return result;
   }

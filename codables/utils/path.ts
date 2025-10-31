@@ -1,3 +1,7 @@
+export type Path = string;
+
+export const ROOT_PATH: Path = "/";
+
 /**
  * This function is called extremely often, so it's optimized for performance.
  *
@@ -13,7 +17,22 @@ function escapePathSegment(segment: string): string {
   return segment;
 }
 
-export function addPathSegment(currentPointer: string, newSegment: string): string {
+function unescapePathSegment(segment: string): string {
+  return segment.replaceAll("~0", "~").replaceAll("~1", "/");
+}
+
+export function splitPath(path: Path): string[] {
+  const segments = path.split("/").map(unescapePathSegment);
+
+  if (path.startsWith("/")) {
+    // remove first empty segment
+    segments.shift();
+  }
+
+  return segments;
+}
+
+export function addPathSegment(currentPointer: Path, newSegment: string): Path {
   if (currentPointer.length > 1) {
     return `${currentPointer}/${escapePathSegment(newSegment)}`;
   }
@@ -27,7 +46,7 @@ export function addPathSegment(currentPointer: string, newSegment: string): stri
   }
 }
 
-export function addNumberPathSegment(currentPointer: string, newSegment: number): string {
+export function addNumberPathSegment(currentPointer: Path, newSegment: number): Path {
   if (currentPointer.length > 1) {
     return `${currentPointer}/${newSegment}`;
   }

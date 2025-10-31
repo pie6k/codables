@@ -1,4 +1,5 @@
 import { JSONValue } from "./types";
+import { Path } from "./utils/path";
 import { tryToSetInParent } from "./utils/misc";
 
 export interface DecodeOptions {
@@ -9,11 +10,31 @@ export class DecodeContext {
   // Will be filled while decoding the data
   resolvedRefs = new Map<number, object>();
 
+  pendingReferences = new Map<number, Set<Path>>();
+
+  registerPendingReference(id: number, path: Path) {
+    const paths = this.pendingReferences.get(id) ?? new Set();
+    paths.add(path);
+    this.pendingReferences.set(id, paths);
+  }
+
   /**
    * Some object needed by some alias (list prepared before) is ready to be used.
    */
   registerRef(id: number, object: object) {
     this.resolvedRefs.set(id, object);
+  }
+
+  resolvePendingReferences(output: any) {
+    for (const [refId, paths] of this.pendingReferences) {
+      const object = this.resolvedRefs.get(refId);
+
+      if (!object) continue;
+
+      for (const path of paths) {
+        tryToSetInParent(output, path, object);
+      }
+    }
   }
 
   resolveRefId(id: number): object | null {
