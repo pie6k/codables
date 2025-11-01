@@ -1,4 +1,5 @@
 import { Coder, coder } from "../Coder";
+import { Memberwise, codable, codableClass } from "../decorators";
 
 describe("circular references", () => {
   it("should encode circular references 1", () => {
@@ -325,5 +326,62 @@ describe("directly referenced in itself", () => {
       $$Set: [{ foo: { $$Map: [["bar", { $$ref: 0 }]] } }],
     });
     const decoded = coder.decode<typeof foo>(encoded);
+  });
+});
+
+describe("works with a custom class", () => {
+  it("works where 2 custom classes reference each other", () => {
+    @codableClass("Project")
+    class Project {
+      @codable()
+      scenes: Set<Scene> = new Set();
+
+      addScene() {
+        const scene = new Scene({ project: this });
+        this.scenes.add(scene);
+
+        return scene;
+      }
+    }
+
+    @codableClass("Scene")
+    class Scene {
+      @codable()
+      project: Project;
+
+      constructor({ project }: Memberwise<Scene>) {
+        this.project = project;
+      }
+    }
+
+    const coder = new Coder([Project, Scene]);
+
+    const project = new Project();
+    const scene = project.addScene();
+
+    const encoded = coder.encode(project);
+    expect(encoded).toEqual({
+      $$id: 0,
+      $$Project: [
+        {
+          scenes: {
+            $$Set: [
+              {
+                $$Scene: [
+                  {
+                    project: { $$ref: 0 },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const $project = coder.decode<typeof project>(encoded);
+    const [$scene] = $project.scenes;
+
+    expect($scene.project).toBe($project);
   });
 });

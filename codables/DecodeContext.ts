@@ -1,6 +1,5 @@
-import { JSONValue } from "./types";
+import { Coder } from "./Coder";
 import { Path } from "./utils/path";
-import { tryToSetInParent } from "./utils/misc";
 
 export interface DecodeOptions {
   externalReferences?: Record<string, unknown>;
@@ -25,18 +24,6 @@ export class DecodeContext {
     this.resolvedRefs.set(id, object);
   }
 
-  resolvePendingReferences(output: any) {
-    for (const [refId, paths] of this.pendingReferences) {
-      const object = this.resolvedRefs.get(refId);
-
-      if (!object) continue;
-
-      for (const path of paths) {
-        tryToSetInParent(output, path, object);
-      }
-    }
-  }
-
   resolveRefId(id: number): object | null {
     return this.resolvedRefs.get(id) ?? null;
   }
@@ -54,7 +41,7 @@ export class DecodeContext {
   readonly externalReferencesMap: Map<string, unknown>;
 
   constructor(
-    data: JSONValue,
+    readonly coder: Coder,
     readonly options?: DecodeOptions,
   ) {
     this.externalReferencesMap = new Map(Object.entries(options?.externalReferences ?? {}));

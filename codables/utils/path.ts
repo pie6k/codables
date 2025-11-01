@@ -33,10 +33,6 @@ export function splitPath(path: Path): string[] {
 }
 
 export function addPathSegment(currentPointer: Path, newSegment: string): Path {
-  if (currentPointer.length > 1) {
-    return `${currentPointer}/${escapePathSegment(newSegment)}`;
-  }
-
   switch (currentPointer) {
     case "/":
     case "":
@@ -47,10 +43,6 @@ export function addPathSegment(currentPointer: Path, newSegment: string): Path {
 }
 
 export function addNumberPathSegment(currentPointer: Path, newSegment: number): Path {
-  if (currentPointer.length > 1) {
-    return `${currentPointer}/${newSegment}`;
-  }
-
   switch (currentPointer) {
     case "/":
     case "":

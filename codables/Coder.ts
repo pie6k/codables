@@ -1,17 +1,19 @@
 import * as builtinTypesMap from "./builtin";
 
-import { AnyCodableClass, JSONValue } from "./types";
-import { CodableType, CodableTypeOptions, codableType, getIsCodableType } from "./CodableType";
+import { CodableType, CodableTypeOptions, codableType, defaultCodableReader, getIsCodableType } from "./CodableType";
 import { DecodeContext, DecodeOptions } from "./DecodeContext";
 import { EncodeContext, EncodeOptions } from "./EncodeContext";
-import { assert, assertGet } from "./utils/assert";
+import { Path, ROOT_PATH, splitPath } from "./utils/path";
 import { getCodableClassType, getIsCodableClass } from "./decorators/registry";
 
 import { $$externalReference } from "./ExternalReference";
 import { AnyClass } from "./decorators/types";
-import { ROOT_PATH } from "./utils/path";
-import { copyJSON } from "./utils/json";
+import { JSONValue } from "./types";
+import { assertGet } from "./utils/assert";
+import { consumeArray } from "./utils/misc";
 import { decodeInput } from "./decode";
+import { getIsObject } from "./is";
+import { getIsTagKey } from "./format";
 import { performEncode } from "./encode";
 import { resolveCodableDependencies } from "./dependencies";
 
@@ -155,7 +157,7 @@ export class Coder {
     canEncode: (value: unknown) => value is Item,
     encode: (data: Item) => Data,
     decode: (data: Data) => Item,
-    options?: CodableTypeOptions,
+    options?: CodableTypeOptions<Item>,
   ) {
     return this.registerType(codableType(name, canEncode, encode, decode, options));
   }
@@ -171,11 +173,11 @@ export class Coder {
   }
 
   decode<T>(value: JSONValue, options?: DecodeOptions): T {
-    const context = new DecodeContext(value, options);
+    const context = new DecodeContext(this, options);
 
     const result = decodeInput<T>(value, context, this, ROOT_PATH);
 
-    context.resolvePendingReferences(result);
+    this.resolvePendingReferencesInOutput(result, context);
 
     return result;
   }
@@ -210,6 +212,51 @@ export class Coder {
 
   get isDefault() {
     return this === coder;
+  }
+
+  private resolvePendingReferencesInOutput(output: any, context: DecodeContext) {
+    for (const [refId, paths] of context.pendingReferences) {
+      const referenceTarget = context.resolvedRefs.get(refId);
+
+      if (!referenceTarget) continue;
+
+      for (const path of paths) {
+        const didUpdate = this.updateValueInOutput(output, path, referenceTarget);
+
+        if (!didUpdate) {
+          console.warn(`Failed to update value at path ${path}`);
+        }
+      }
+    }
+  }
+
+  private updateValueInOutput(root: object, path: Path, value: unknown) {
+    const segmentsConsumer = consumeArray(splitPath(path), getIsTagKey);
+
+    let current = root;
+
+    while (true) {
+      const matchingType = this.getMatchingTypeForObject(current);
+
+      const reader = matchingType?.reader ?? defaultCodableReader;
+
+      const { get, set } = reader(current, segmentsConsumer);
+
+      if (segmentsConsumer.isDone) {
+        // We are at the end of the path, so we can set the value
+        return set(value);
+      } else {
+        // Read the value and keep traversing the path
+        const result = get();
+
+        if (!getIsObject(result)) {
+          console.warn(`Expected object at path ${path}, got ${typeof result}`);
+          return false;
+        }
+
+        current = result;
+      }
+    }
   }
 }
 

@@ -1,6 +1,8 @@
 type WithMetadata<T> = T & { [Symbol.metadata]?: DecoratorMetadata };
 
 export function getMetadataKey<T extends object>(Class: T): DecoratorMetadata | null {
+  if (!Class) return null;
+
   return (Class as WithMetadata<T>)[Symbol.metadata] ?? null;
 }
 

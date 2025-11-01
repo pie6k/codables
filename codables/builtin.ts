@@ -1,8 +1,18 @@
+import { CodableReader, codableType } from "./CodableType";
+import {
+  EntryIndex,
+  getInSetAtIndex,
+  getMapKeyByIndex,
+  getMapValueByIndex,
+  setInSetAtIndex,
+  updateMapKeyByIndex,
+  updateMapValueByIndex,
+} from "./utils/readers";
 import { TYPED_ARRAY_CLASSES, getIsTypedArray, getTypedArrayConstructor, getTypedArrayType } from "./utils/typedArrays";
+import { assertNumeric, narrowType } from "./utils/assert";
 import { getSymbolKey, removeUndefinedProperties } from "./utils/misc";
 
 import { EncodeContext } from "./EncodeContext";
-import { codableType } from "./CodableType";
 import { getErrorExtraProperties } from "./utils/errors";
 
 /**
@@ -34,6 +44,15 @@ export const $$date = codableType(
   },
 );
 
+const setReader: CodableReader<Set<unknown>> = (set, [indexString]) => {
+  const index = assertNumeric(indexString);
+
+  return {
+    get: () => getInSetAtIndex(set, index),
+    set: (value) => setInSetAtIndex(set, index, value),
+  };
+};
+
 export const $$set = codableType(
   "Set",
   (value) => value instanceof Set,
@@ -41,8 +60,31 @@ export const $$set = codableType(
   (array) => new Set(array),
   {
     Class: Set,
+    reader: setReader,
   },
 );
+
+const mapReader: CodableReader<Map<unknown, unknown>> = (map, [entryIndexString, indexInEntryString]) => {
+  // index of the entry path points to
+  const entryIndex = assertNumeric(entryIndexString);
+  // 0 if path points to key, 1 if path points to value
+  const indexInEntry = assertNumeric<EntryIndex>(indexInEntryString);
+
+  switch (indexInEntry) {
+    case EntryIndex.Key:
+      return {
+        get: () => getMapKeyByIndex(map, entryIndex),
+        set: (value) => updateMapKeyByIndex(map, entryIndex, value),
+      };
+    case EntryIndex.Value:
+      return {
+        get: () => getMapValueByIndex(map, entryIndex),
+        set: (value) => updateMapValueByIndex(map, entryIndex, value),
+      };
+    default:
+      throw new Error(`Entry path should be either 0 or 1, got ${indexInEntry}`);
+  }
+};
 
 export const $$map = codableType(
   "Map",
@@ -51,6 +93,7 @@ export const $$map = codableType(
   (entries) => new Map(entries),
   {
     Class: Map,
+    reader: mapReader,
   },
 );
 

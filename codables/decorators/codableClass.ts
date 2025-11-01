@@ -68,6 +68,15 @@ export function codableClass<T extends AnyClass>(
         priority: getPrototypeChainLength(Class),
         dependencies: maybeOptions?.dependencies,
         Class,
+        reader: (item, [_, key]) => {
+          // Custom class data has a form of array of constructor arguments
+          // The first one is memberwise object and this is what we want, we ignore the first (0) index
+
+          return {
+            get: () => Reflect.get(item, key),
+            set: (value) => Reflect.set(item, key, value),
+          };
+        },
       },
     );
 

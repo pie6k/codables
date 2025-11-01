@@ -1,6 +1,7 @@
 import {
   ARRAY_REF_ID_REGEXP,
   ESCAPED_ARRAY_REF_ID_REGEXP,
+  MAYBE_ESCAPED_ARRAY_REF_ID_REGEXP,
   RefAlias,
   Tag,
   TagKey,
@@ -64,28 +65,18 @@ function resolveTypeTag<T>(tag: Tag<JSONValue>, tagKey: TagKey, context: DecodeC
 }
 
 function getMaybeCustomTypeTag(refId: number | undefined, keys: string[]) {
-  // We determine conditions needed for a valid type tag
-  // either { $$type: data }, or { $$id: 0, $$type: data }
-  //
-  // should be like { $$set: [1, 2, 3] } as we do not have $$id in the tag
-  if (refId === undefined && keys.length !== 1) return false as const;
-  // should be like { $$id: 0, $$set: [1, 2, 3] }
-  if (refId !== undefined && keys.length !== 2) return false as const;
+  if (refId === undefined) {
+    const first = keys[0];
 
-  if (keys.length === 1) {
-    return getIsTagKey(keys[0]) ? keys[0] : (false as const);
+    if (keys.length === 1 && getIsTagKey(first)) return first as TagKey;
+
+    return false as const;
   }
 
-  /**
-   * The first key is $$id. For it to be a tag, it must have 2nd key and it must match $$ syntax
-   */
-  if (keys[0] === "$$id") {
-    return getIsTagKey(keys[1]) ? (keys[1] as TagKey) : (false as const);
-  }
+  if (keys.length !== 2) return false as const;
 
-  if (keys[1] === "$$id") {
-    return getIsTagKey(keys[0]) ? (keys[0] as TagKey) : (false as const);
-  }
+  if (keys[0] === "$$id" && getIsTagKey(keys[1])) return keys[1] as TagKey;
+  if (keys[1] === "$$id" && getIsTagKey(keys[0])) return keys[0] as TagKey;
 
   return false as const;
 }
@@ -109,22 +100,24 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
   if (Array.isArray(input)) {
     const result: any[] = [];
 
-    /**
-     * Array is marked as being referenced by something else,
-     * eg its ["$$id:0", 1, 2, 3]
-     */
-    if (typeof input[0] === "string" && ARRAY_REF_ID_REGEXP.test(input[0])) {
-      const [, id] = ARRAY_REF_ID_REGEXP.exec(input[0])!;
-      // lets register it so this other thing will be able to resolve it later by id
-      context.registerRef(Number(id), result);
+    const first = input[0];
 
-      // let's remove the $$id marker
-      // todo: should we mutate instead with .splice? probably not
-      input = input.slice(1);
-    } else if (typeof input[0] === "string" && ESCAPED_ARRAY_REF_ID_REGEXP.test(input[0])) {
-      // edge case: array with marker was passed to encoder and encoded as eg ["~$$id:0", 1, 2, 3]
-      // let's escape it back, but do not treat it as referenced
-      input[0] = input[0].slice(1);
+    if (typeof first === "string" && (first.startsWith("~") || first.startsWith("$$"))) {
+      if (MAYBE_ESCAPED_ARRAY_REF_ID_REGEXP.test(first)) {
+        // edge case: array with marker was passed to encoder and encoded as eg ["~$$id:0", 1, 2, 3]
+        // let's escape it back, but do not treat it as referenced
+        if (first.startsWith("~")) {
+          input[0] = first.slice(1);
+        } else {
+          /**
+           * Array is marked as being referenced by something else,
+           * eg its ["$$id:0", 1, 2, 3]
+           */
+          const [, id] = MAYBE_ESCAPED_ARRAY_REF_ID_REGEXP.exec(first)!;
+          context.registerRef(Number(id), result);
+          input = input.slice(1);
+        }
+      }
     }
 
     // We are ready to process the array
@@ -201,17 +194,15 @@ export function decodeInput<T>(input: JSONValue, context: DecodeContext, coder: 
     // "$$id" is a special marker not meant to be part of the result
     if (key === "$$id" || getIsForbiddenProperty(key)) continue;
 
-    // If the key was escpaed, use unescaped version for assigning data to the result
-    const decodeKey = getIsEscapedTagKey(key) ? key.slice(1) : key;
-
     const inputValue = input[key];
 
     const decoded = decodeInput<any>(inputValue, context, coder, addPathSegment(path, key));
 
-    result[decodeKey] = decoded;
+    // If the key was escpaed, use unescaped version for assigning data to the result
+    result[getIsEscapedTagKey(key) ? key.slice(1) : key] = decoded;
 
     if (getIsReferencedTag(inputValue)) {
-      context.registerRef(inputValue["$$id"], decoded);
+      context.registerRef(inputValue.$$id, decoded);
     }
   }
 

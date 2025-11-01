@@ -3,6 +3,7 @@ import { PrivateMetadata, getMetadataKey } from "./PrivateMetadata";
 import { AnyClass } from "./types";
 import { CodableDependencies } from "../dependencies";
 import { CodableType } from "../CodableType";
+import { getIsObject } from "../is";
 
 export interface FieldMetadata {
   encodeAs?: string;
@@ -23,6 +24,16 @@ export const externalClassFieldsRegistry = new PrivateMetadata<Map<string, { key
 
 export function getIsCodableClass(Class: object): Class is AnyClass {
   const key = getMetadataKey(Class);
+
+  if (!key) return false;
+
+  return codableClassRegistry.has(key);
+}
+
+export function getIsCodableClassInstance(instance: object): InstanceType<AnyClass> {
+  if (!getIsObject(instance)) return false;
+
+  const key = getMetadataKey(instance.constructor);
 
   if (!key) return false;
 
